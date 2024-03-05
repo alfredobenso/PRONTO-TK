@@ -1,0 +1,23 @@
+#You can add tooltips for the parameters of the training process here
+tooltips = {
+    'name': 'The name of the training process',
+    'acronym': 'A short form or abbreviation of the name',
+    'folder': 'The directory where the training data or results are stored',
+    'type': 'single/leaveoneout: Specifies the type of training process.',
+    'originaldataset': 'The path to the original dataset used for training',
+    'silentmode': 'True/False: a flag to control the verbosity of the training process. If "yes", log is not reproduced on STDIN',
+    'percent': 'LIST of two floats: it specifies the percentage of data to be used for training and testing. The remaining will be used for validation',
+    '_01ratio': 'Specifies the ratio of class 0 to class 1 in the data',
+    'includedspecies': 'LIST of strings: Specifies the species to be included in the training process - "" means all species are included',
+    'excludedspecies': 'LIST of strings: Specifies the species to be excluded from the training process - [] means no species are excluded',
+    'leaveoneoutspecies': 'LIST of LIST of strings: each list specifies a species or group of species, to be used for testing in the leave-one-out training process',
+    'createflag': 'yes/no/ask: a flag to control whether a new dataset has to be generated if already present',
+    'trainflag': 'yes/no/ask: a flag to control whether model already existing have to be retrained',
+    'inferflag': 'yes/no/ask: a flag to control whether an inference has to be repeated in case a file with the results is already present',
+    'batch_size': 'LIST: specifies the batch size for the training process',
+    'epoch': 'LIST: specifies the number of epochs for the training/fine-tuning process',
+    'learning_rate': 'LIST: specifies the learning rate for the training/fine-tuning process',
+    'big_or_small_model': '0: big / 1: small :an integer to control the model to be used for training/fine-tuning',
+    'annotation': 'LIST: for each label 0/1 in training/fine-tuning, it specifies the type of annotation to be used to select data for training/fine-tuning/inference',
+    'reviewed': 'LIST: for each label 0/1 in training/fine-tuning, it specifies the type of annotation to be used to select data for training/fine-tuning/inference',
+}
