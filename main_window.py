@@ -12,7 +12,7 @@ from itertools import product
 import webbrowser
 import jj2_prepareInputFiles
 from process import myProcess
-from threads import thread_jj2, thread_jj3, thread_jj3ft, thread_jj4
+from threads import *
 
 class MainWindow:
     '''
@@ -58,7 +58,7 @@ class MainWindow:
         self.buttonUPW.pack(fill=ctk.BOTH, side=ctk.LEFT)
         self.textboxDATA_UP = ctk.CTkButton(frameDATA, height=textBoxHeight, text="1. Uniprot Dataset", command=lambda: self.open_finder(os.path.dirname(self.cfg["GENERAL"]["originaldataset"][0])))
         self.textboxDATA_UP.pack(fill=ctk.BOTH, pady=25, padx=(5,5), side=ctk.LEFT)
-        self.buttonEMB = ctk.CTkButton(frameDATA, text="2. Embeddings", image=ctk.CTkImage(Image.open("assets/embeddings.png"), size=(60, 60)), command=self.run_pipeline_stage)
+        self.buttonEMB = ctk.CTkButton(frameDATA, text="2. Embeddings", image=ctk.CTkImage(Image.open("assets/embeddings.png"), size=(60, 60)), command=self.run_pipeline_stage_jj1)
         self.buttonEMB.pack(fill=ctk.BOTH, side=ctk.LEFT)
         self.textboxDATA_IN = ctk.CTkButton(frameDATA, height=textBoxHeight, text="Original DataSet", command=lambda: self.open_finder(os.path.dirname(self.cfg["GENERAL"]["originaldataset"][0])))
         self.textboxDATA_IN.pack(fill=ctk.BOTH, pady=25, padx=(5,5), side=ctk.LEFT)
@@ -139,6 +139,18 @@ class MainWindow:
     the UI components accordingly.    
     '''
     def checkIO(self):
+
+        #If there are files in the cfg["EMBEDDINGS"]["uniprotfolder"]/downloads, the textbox will be green
+        #You need to check if there are files ending with tsv, not if the folder exists
+        if len([file for file in os.listdir(os.path.join(self.cfg["EMBEDDINGS"]["uniprotfolder"], "downloads")) if file.endswith('.tsv')]) > 0:
+            #textbox background green
+            self.textboxDATA_UP.configure(fg_color="green")
+            self.buttonEMB.configure(state=ctk.NORMAL)
+        else:
+            #textbox background red
+            self.textboxDATA_UP.configure(fg_color="red")
+            self.buttonEMB.configure(state=ctk.DISABLED)
+
         allOk = True
         for dsFile in self.cfg["GENERAL"]["originaldataset"]:
             if not os.path.exists(dsFile):
@@ -337,6 +349,40 @@ class MainWindow:
         #thread4.join()  # Wait for the thread to finish
 
         self.checkIO()
+
+    def run_pipeline_stage_jj1(self):
+
+        #check if the file
+        if self.cfg["EMBEDDINGS"]["createflag"] == "ask" and os.path.exists(os.path.join(self.cfg["EMBEDDINGS"]["uniprotfolder"], self.cfg["EMBEDDINGS"]["outputdatasetname"] + "_embeddings_dataset.csv")):
+            answer = messagebox.askyesno("Warning", f"The final dataset {self.cfg['EMBEDDINGS']['outputdatasetname'] + '_embeddings_dataset.csv'} appears to be already there. Do you want to regenerate it?", icon='warning')
+            if answer == True:
+                # check if files are already present in the uniprotfolder folder /embeddings
+                if not os.path.exists(os.path.join(self.cfg["EMBEDDINGS"]["uniprotfolder"], "embeddings")):
+                    os.makedirs(os.path.join(self.cfg["EMBEDDINGS"]["uniprotfolder"], "embeddings"))
+
+                # check if any file whose name ends with _embeddings.csv is present in the embeddings folder
+                if self.cfg["EMBEDDINGS"]["createflag"] == "ask" and (
+                        len([f for f in os.listdir(os.path.join(self.cfg["EMBEDDINGS"]["uniprotfolder"], "embeddings"))
+                             if f.endswith("_embeddings.csv")]) > 0):
+                    answer = messagebox.askyesno("Warning",
+                                                 f"Some of the embeddings output files are already present. Do you want to recompute them?",
+                                                 icon='warning')
+                    if answer == True:
+                        self.cfg["EMBEDDINGS"]["createflag"] = "yes"
+                    else:
+                        self.cfg["EMBEDDINGS"]["createflag"] = "no"
+
+                if self.cfg["EMBEDDINGS"]["addlabelsflag"] == "ask":
+                    answer = messagebox.askyesno("Warning", f"Do you want to add LABELS (0/1) to embedding files?",
+                                                 icon='warning')
+                    if answer == True:
+                        self.cfg["EMBEDDINGS"]["addlabelsflag"] = "yes"
+                    else:
+                        self.cfg["EMBEDDINGS"]["addlabelsflag"] = "no"
+
+                my_class = myProcess("Embeddings computation", self.cfg, self.checkIO)
+                my_class.start_thread(thread_jj1)
+
 
     def run_pipeline_stage_jj2(self):
 

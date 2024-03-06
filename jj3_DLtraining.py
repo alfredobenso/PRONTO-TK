@@ -14,8 +14,9 @@ import os
 '''
 This function is used to evaluate the accuracy of the model
 '''
-def evaluate_accuracy(data_iter, net):
-    device = torch.device("mps", 0)
+def evaluate_accuracy(data_iter, net, torchdevice = "mps"):
+    #device = torch.device("mps", 0)
+    device = torch.device('cuda:0' if torch.cuda.is_available() else torchdevice)
 
     acc_sum, n = 0.0, 0
     for x, y in data_iter:
@@ -44,7 +45,8 @@ def DL_train(cfg, EPOCHS, LR, BATCH_SIZE, logger = "", load_model_dir = "", inpu
         original_stdout = sys.stdout
         original_stderr = sys.stderr
 
-    device = torch.device("mps", 0)
+    #device = torch.device("mps", 0)
+    device = torch.device('cuda:0' if torch.cuda.is_available() else cfg["ENVIRONMENT"]["torchdevice"])
 
     #Load the file named dataset_TT.csv in the 0.DataSet folder of the expConf["Folder"] folder
     if load_model_dir == "":
@@ -183,7 +185,7 @@ def DL_train(cfg, EPOCHS, LR, BATCH_SIZE, logger = "", load_model_dir = "", inpu
             }, os.path.join(output_dir, 'ckpt_{}.pl'.format(epoch)))
         net.eval()
         with torch.no_grad():
-            train_acc = evaluate_accuracy(train_iter, net)
+            train_acc = evaluate_accuracy(train_iter, net, torchdevice = cfg["ENVIRONMENT"]["torchdevice"])
             # test_acc=evaluate_accuracy(test_iter,net)
             test_data_gpu = test_data.float().to(device)
             test_logits = net(test_data_gpu)

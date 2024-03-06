@@ -12,7 +12,7 @@ from model_util import newModel1, newModel2
 This function is used to validate a model using a dataset. 
 It takes as input the model, the dataset and the output file.
 '''
-def DL_validate(inputModel, model_type, inputData, outputFile, logger, validationSpecies = []):
+def DL_validate(inputModel, model_type, inputData, outputFile, logger, validationSpecies = [], torchdevice = "mps"):
 
     model_dir=inputModel
 
@@ -34,7 +34,7 @@ def DL_validate(inputModel, model_type, inputData, outputFile, logger, validatio
 
     jjdata = torch.tensor(jj_all_data.loc[:, '0':'1023'].values)
 
-    device = torch.device("mps",0)
+    device = torch.device('cuda:0' if torch.cuda.is_available() else torchdevice)
     # device = torch.device("cpu")
 
     model=torch.load(model_dir, map_location=device)
@@ -90,6 +90,7 @@ if __name__ == '__main__':
     root = tk.Tk()
     root.withdraw()
 
+    #TO UPDATE with new configuration
     file = filedialog.askopenfilename(initialdir = "./experiments/_configurations/", title="Select experiment configuration file ", filetypes=[("Text files", "*.py")])
     cfgFile = os.path.basename(file).replace(".py", "")
     #import the configuration file
@@ -104,4 +105,4 @@ if __name__ == '__main__':
     if not os.path.exists(file_path):
         os.makedirs(file_path)
 
-    DL_validate(model, cfg.expConf["big_or_small_model"], dataset, os.path.join(file_path, file_name))
+    DL_validate(model, cfg.expConf["big_or_small_model"], dataset, os.path.join(file_path, file_name), torchdevice = cfg["ENVIRONMENT"]["torchdevice"])

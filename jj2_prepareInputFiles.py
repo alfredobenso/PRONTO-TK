@@ -129,7 +129,7 @@ def filterDataSet(cfg, logger):
         #Free some space
         #Drop these columns: protId, Protein names, Gene Names, Organism, Length, Caution, Gene Ontology (molecular function)
         logger.log_message (f"Dropping unused columns...")
-        jj_all_data = jj_all_data.drop(columns=["protID", "Sequence", "Protein names", "Gene Names", "Organism", "Length", "Caution", "Gene Ontology (molecular function)"])
+        jj_all_data = jj_all_data.drop(columns=["Entry", "Sequence", "Protein names", "Gene Names", "Organism", "Length", "Caution", "Gene Ontology (molecular function)"])
 
         #jj_all_data.set_index('Entry Name', inplace=True)
 

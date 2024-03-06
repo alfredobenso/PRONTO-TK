@@ -4,6 +4,9 @@ import os
 import time
 import pandas as pd
 from itertools import product
+import ab1_analyzeUniprotFiles
+import ab2_mergeEmbeddingFiles
+import jj1_preprocessUniprotFiles
 import jj2_prepareInputFiles
 import jj3_DLtraining
 import jj4_DLinference
@@ -18,6 +21,38 @@ def thread_function(cfg, logger):
         #logger.log_message((parentWindow.progress_bar.set, ((i + 1)/100,)))
         logger.log_message(f'Progress: {(i + 1)/100}')
     logger.log_message('Simulation finished \n')
+
+def thread_jj1(cfg, window, callback=None, semaphore=None):
+    if semaphore is not None:
+        semaphore.acquire()
+
+    SILENT_MODE = cfg["GENERAL"]["silentmode"]
+
+    logFolder = os.path.join("experiments", cfg["GENERAL"]["folder"], "logs")
+    if not os.path.exists(logFolder):
+        os.makedirs(logFolder)
+
+    window.logger_handler.closeHandlers()
+    window.logger_handler.filename = os.path.join(logFolder, "datasetEmbeddings.log")
+    window.logger_handler.setup_logger(SILENT_MODE)
+    window.logger_handler.log_message("Starting Embeddings computation...")
+    jj1_preprocessUniprotFiles.computeEmbeddings(cfg, window.logger_handler)
+    #Add here other embeddings computation functions
+    window.logger_handler.log_message("Analyzing Embedding files...")
+    ab1_analyzeUniprotFiles.analyzeEmbeddingFiles(cfg, window.logger_handler)
+    window.logger_handler.log_message("Mergin Embedding files...")
+    ab2_mergeEmbeddingFiles.mergeEmbeddings(cfg, window.logger_handler)
+    window.logger_handler.log_message("\nEmbeddings computation done")
+    window.logger_handler.log_message(f"NOTICE: you can now delete the folders 'downloads' and 'embeddings' from '{cfg['EMBEDDINGS']['uniprotfolder']}'")
+
+    # Release the semaphore when done
+    if semaphore is not None:
+        semaphore.release()
+
+    # Call the callback function if it's not None
+    if callback is not None:
+        callback()
+    return
 
 def thread_jj2(cfg, window, callback=None, semaphore=None):
     if semaphore is not None:
@@ -256,10 +291,10 @@ def thread_jj4(cfg, window, callback=None, semaphore=None):
         else:
             if cfg["GENERAL"]["type"] == "single":
                 window.logger_handler.log_message(f'Inference #{idx}...', idx / len(model_names))
-                jj4_DLinference.DL_validate(os.path.join(model_path,model), cfg["TrainTest"]["big_or_small_model"], validationDataSet, os.path.join(log_file_path, log_file_name), window.logger_handler)
+                jj4_DLinference.DL_validate(os.path.join(model_path,model), cfg["TrainTest"]["big_or_small_model"], validationDataSet, os.path.join(log_file_path, log_file_name), window.logger_handler, torchdevice = cfg["ENVIRONMENT"]["torchdevice"])
             else:
                 window.logger_handler.log_message(f'Inference species: {cfg["TrainTest"]["leaveoneoutspecies"][exclude]}...', idx / len(model_names))
-                jj4_DLinference.DL_validate(os.path.join(model_path,model), cfg["TrainTest"]["big_or_small_model"], validationDataSet, os.path.join(log_file_path, log_file_name), window.logger_handler, validationSpecies=cfg["TrainTest"]["leaveoneoutspecies"][exclude])
+                jj4_DLinference.DL_validate(os.path.join(model_path,model), cfg["TrainTest"]["big_or_small_model"], validationDataSet, os.path.join(log_file_path, log_file_name), window.logger_handler, validationSpecies=cfg["TrainTest"]["leaveoneoutspecies"][exclude], torchdevice = cfg["ENVIRONMENT"]["torchdevice"])
 
     valStatsFolder.analyseValidationFolder(window.logger_handler, os.path.join("experiments", cfg["GENERAL"]["folder"], "inferences"))
 
