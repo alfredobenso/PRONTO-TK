@@ -145,6 +145,7 @@ def computeEmbeddings(cfg, logger):
                     with torch.no_grad():
                         # returns: ( batch-size x max_seq_len_in_minibatch x embedding_dim )
                         embedding_repr = model(input_ids, attention_mask=attention_mask)
+                        #logger.log_message(".")
                 except RuntimeError:
                     logger.log_message("RuntimeError during embedding for {} (L={})".format(pdb_id, seq_len))
                     continue
@@ -226,31 +227,81 @@ def computeEmbeddings(cfg, logger):
     model, tokenizer = get_T5_model(device)
 
     #***********************************************************************************************
-    val_folder = os.path.join(cfg["EMBEDDINGS"]["uniprotfolder"], "downloads")
+    val_folder = os.path.join(cfg["UNIPROT"]["go_folder"], "downloads")
     sequencesBatchSize = cfg["EMBEDDINGS"]["sequencebatchsize"]
     #***********************************************************************************************
 
-    outputFolder = os.path.join(cfg["EMBEDDINGS"]["uniprotfolder"], "embeddings")
+    outputFolder = os.path.join(cfg["UNIPROT"]["go_folder"], "embeddings")
     if not os.path.exists(outputFolder):
         os.makedirs(outputFolder)
 
-    tsv_files = [file for file in os.listdir(val_folder) if file.endswith('.tsv')]
+    dfCache = pd.DataFrame()
+    if len(cfg["EMBEDDINGS"]["cachedataset"]) > 0:
+        logger.log_message("Loading embeddings cache datasets ...")
+        # Open the cache file in Original Input/Terrabacteria/Terrabacteria_embeddings_dataset.csv
+        #if file exists, read it into dfCache
+        for file in cfg["EMBEDDINGS"]["cachedataset"]:
+            if os.path.exists(file):
+                dftmp = pd.read_csv(file, delimiter=',', low_memory=False)
+                dfCache = pd.concat([dfCache, dftmp], ignore_index=True)
+
+    tsv_files = [file for file in os.listdir(val_folder) if file.endswith('.dataset.csv')]
     tsvCount = len(tsv_files)
     #for each file in the folder whose name end with ".tsv"
     for idx, file in enumerate(tsv_files):
-        if file.endswith(".tsv"):
+        if file.endswith(".csv"):
             logger.log_message(f"\nProcessing file {file}\n", idx/tsvCount)
 
             #define final_output_path equal to the outputFolder + the name of the original filename + "_embeddings.csv"
-            final_output_path = os.path.join(outputFolder, file.split('.')[0] + "_embeddings.csv")
-            f = open(final_output_path, 'a')
+            final_output_path = os.path.join(outputFolder, file.split('.')[0] + ".embeddings.csv")
+            f = open(final_output_path, 'w')
 
             #read the file into the first colum of df_si
             df = pd.read_csv(os.path.join(val_folder, file), delimiter=',')
-            #Add a Specie column that is equal to the forst two words of the Organism column
+            #Add a Specie column that is equal to the first two words of the Organism column
             df['Species'] = df['Organism'].apply(lambda x: x.split(' ')[0] + ' ' + x.split(' ')[1])
             #remove duplicates ffrom df
             df.drop_duplicates(subset=['Entry'], keep='first', inplace=True)
+
+            logger.log_message (f"File has {len(df)} sequences ...")
+
+            if len(cfg["EMBEDDINGS"]["cachedataset"]) > 0:
+
+                cachedEntries = df[df['Entry'].isin(dfCache['Entry'])]
+                cols_to_copy = list(range(1024))
+                cols_to_copy = [str(x) for x in cols_to_copy]
+                merged_df = cachedEntries.merge(dfCache[['Entry'] + cols_to_copy], how='left', on='Entry')
+                cachedEntries = merged_df[merged_df.columns]
+
+                #save in a new df cachedEntries the list of rows of df that are also in dfCache
+                #cachedEntries = df[df['Entry'].isin(dfCache['Entry'])]
+                #create in cachedEntries 1024 new columns called '0' to '1023' (strings)
+                #cachedEntries = cachedEntries.reindex(columns=dfCache.columns)
+
+                #For each row in cachedEntries
+                # Create a mapping for efficient lookup
+                #entry_mapping = dict(zip(dfCache['Entry'], dfCache.index))
+                # Update cachedEntries directly using vectorized operations
+                # count = 0
+                # for index, row in cachedEntries.iterrows():
+                #     matching_index = entry_mapping.get(row['Entry'])
+                #     if matching_index is not None:
+                #         cachedEntries.loc[index, '0':'1023'] = dfCache.loc[matching_index, '0':'1023']
+                #         print(count)
+                #         count = count + 1
+
+                # for index, row in cachedEntries.iterrows():
+                #     #find the corresponding row in dfCache
+                #     matching_row = dfCache[dfCache['Entry'] == row['Entry']]
+                #     #append the columns of matching_row named '0' to '1023' (strings) to the corresponding row in cachedEntries
+                #     cachedEntries.loc[index, '0':'1023'] = matching_row.iloc[0]['0':'1023']
+                logger.log_message (f"File has {len(cachedEntries)} sequences in cache ...")
+
+                #remove from df all the rows that are cachedEntries
+                df = df[~df['Entry'].isin(cachedEntries['Entry'])]
+                logger.log_message (f"File has {len(df)} sequences not in cache ...")
+
+            logger.log_message (f"Calculating embeddings for {len(df)} sequences ...")
 
             seqs = {}
             #Fill the seqs dict with the Entry Column as key and the Sequence column as value
@@ -259,17 +310,15 @@ def computeEmbeddings(cfg, logger):
                 # replace tokens that are mis-interpreted when loading h5
                 uniprot_id = uniprot_id.replace("/", "_").replace(".", "_")
 
-                # repl. all whie-space chars and join seqs spanning multiple lines, drop gaps and cast to upper-case
+                # repl. all white-space chars and join seqs spanning multiple lines, drop gaps and cast to upper-case
                 seq = ''.join(row['Sequence'].split()).upper().replace("-", "")
                 # repl. all non-standard AAs and map them to unknown/X
                 seq = seq.replace('U', 'X').replace('Z', 'X').replace('O', 'X')
-
                 seqs[uniprot_id] = seq
-
 
             # Create a loop that calls the get_embedding function on batches of 25 seq proteins from df
             batchCount = 0
-            logger.log_message (f"Building {len(df)//sequencesBatchSize} batches of {sequencesBatchSize} sequences each");
+            logger.log_message (f"Building {(len(df)//sequencesBatchSize) + 1} batches of {sequencesBatchSize} sequences each");
             total_elements = len(df)
 
             for start_index in range(0, total_elements, sequencesBatchSize):
@@ -294,6 +343,11 @@ def computeEmbeddings(cfg, logger):
                         #write the row matching_row to csv file f using the to_csv method
                         #with the parameters index=False, mode='w', header=f.tell() == 0
                         df.loc[matching_row.index].to_csv(f, index=False, mode='a', header=f.tell() == 0)
+
+
+    #saved chachedEntries to the f file
+    if len(cachedEntries) > 0:
+        cachedEntries.to_csv(f, index=False, mode='a', header=f.tell() == 0)
 
     return
 

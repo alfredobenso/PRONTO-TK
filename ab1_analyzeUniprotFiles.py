@@ -2,102 +2,46 @@ import os
 import pandas as pd
 def analyzeEmbeddingFiles(cfg, logger):
     #***********************************************************************************************
-    val_folder = os.path.join(cfg["EMBEDDINGS"]["uniprotfolder"],"embeddings")
+    val_folder = os.path.join(cfg["UNIPROT"]["go_folder"], "embeddings")
     #***********************************************************************************************
     # Initialize a dictionary to store the species counts
     total_species_counts = {}
 
-    emb_files = [file for file in os.listdir(val_folder) if file.endswith('_embeddings.csv')]
+    emb_files = [file for file in os.listdir(val_folder) if file.endswith('.embeddings.csv')]
     embCount = len(emb_files)
 
     #for each file in the folder whose name end with "_embeddings.csv"
     for idx, file in enumerate(emb_files):
-        if file.endswith("_embeddings.csv"):
+        if file.endswith(".embeddings.csv"):
             logger.log_message(f"Analyzing file {file}", idx/embCount)
 
             #read the file into the first colum of df_si
             df = pd.read_csv(os.path.join(val_folder, file), delimiter=',', low_memory=False)
 
-            _FILES_WITH_LABELS = "Label" in df.columns
-            _ADD_LABELS = cfg["EMBEDDINGS"]["addlabelsflag"]
-
-            #Add labels from filename
-            if not _FILES_WITH_LABELS and _ADD_LABELS=="yes":
-                logger.log_message(f"Adding labels .....")
-
-                #Remove the first column
-                df = df.iloc[:, 1:]
-                #If the file name has the word NOT, add a column called Label initialized to 0 as first column
-                if "NOT" in file:
-                    df.insert(0, "Label", 0)
-                else:
-                    df.insert(0, "Label", 1)
-
-                #Save the modified file in a new file that starts with label_0_ or label_1_
-                if "NOT" in file:
-                    df.to_csv(os.path.join(val_folder, f"{file}"), index=False)
-                else:
-                    df.to_csv(os.path.join(val_folder, f"{file}"), index=False)
-
-            _FILES_WITH_LABELS = "Label" in df.columns
-
             if "Annotation" not in df.columns:
-                if "manual" in file:
-                    df.insert(0, "Annotation", "manual")
-                elif "automatic" in file:
-                    df.insert(0, "Annotation", "automatic")
-                else:
-                    df.insert(0, "Annotation", "n/a")
+                df.insert(0, "Annotation", "n/a")
 
             # Count the number of labels (1/0) for each Species - Divide between Reviewed and unreviewed looking at the Reviewed column
-            if _FILES_WITH_LABELS:
-                # for each Species
-                for annotation in ("manual", "automatic", "n/a"):
-                    for species in df['Species'].unique():
-                        zero_rev_count = df[
-                            (df['Label'] == 0) & (df['Reviewed'] == "reviewed") & (df['Species'] == species) & (
-                                        df['Annotation'] == annotation)].shape[0]
-                        one_rev_count = df[
-                            (df['Label'] == 1) & (df['Reviewed'] == "reviewed") & (df['Species'] == species) & (
-                                        df['Annotation'] == annotation)].shape[0]
-                        zero_unrev_count = df[
-                            (df['Label'] == 0) & (df['Reviewed'] == "unreviewed") & (df['Species'] == species) & (
-                                        df['Annotation'] == annotation)].shape[0]
-                        one_unrev_count = df[
-                            (df['Label'] == 1) & (df['Reviewed'] == "unreviewed") & (df['Species'] == species) & (
-                                        df['Annotation'] == annotation)].shape[0]
+            if "Label" in df.columns:
+                df["Label"] = df["Label"].astype(int)
 
-                        if species not in total_species_counts:
-                            total_species_counts[species] = {"manual": {"0U": 0, "1U": 0, "0R": 0, "1R": 0},
-                                                             "automatic": {"0U": 0, "1U": 0, "0R": 0, "1R": 0},
-                                                             "n/a": {"0U": 0, "1U": 0, "0R": 0, "1R": 0}}
-                            total_species_counts[species][annotation]["0U"] = zero_unrev_count
-                            total_species_counts[species][annotation]["1U"] = one_unrev_count
-                            total_species_counts[species][annotation]["0R"] = zero_rev_count
-                            total_species_counts[species][annotation]["1R"] = one_rev_count
-                        else:
-                            total_species_counts[species][annotation]["0U"] += zero_unrev_count
-                            total_species_counts[species][annotation]["1U"] += one_unrev_count
-                            total_species_counts[species][annotation]["0R"] += zero_rev_count
-                            total_species_counts[species][annotation]["1R"] += one_rev_count
-            else:
-                total_species_counts = df['Species'].value_counts()
+                # Group by 'Species', 'Annotation', 'Label', and 'Reviewed' and count the number of rows in each group
+                grouped_counts = df.groupby(['Species', 'Annotation', 'Label', 'Reviewed']).size()
 
-    # Convert the total_species_counts dictionary to a DataFrame adding the key as column
-    # Flatten the nested dictionary
-    # Create an empty DataFrame with the first-level keys as index and the column named "Species"
-    df_output = pd.DataFrame(index=total_species_counts.keys(), columns=["Species"])
+                # Convert the GroupBy object to a DataFrame
+                df_grouped_counts = grouped_counts.reset_index(name='Count')
 
-    # Iterate over the nested dictionaries
-    for first_key, inner_dict in total_species_counts.items():
-        # Create columns for each combination of subkey and 'a'/'b' values
-        for subkey, sub_dict in inner_dict.items():
-            for k, v in sub_dict.items():
-                column_name = f"{subkey}_{k}"
-                if v > 0:
-                    df_output.loc[first_key, column_name] = v
+                # Pivot the DataFrame to get the desired format
+                df_pivot = df_grouped_counts.pivot_table(index=['Species'], columns=['Label', 'Annotation', 'Reviewed'],
+                                                         values='Count', fill_value=0)
 
-    #replace nan with 0
+                # Flatten the MultiIndex columns
+                df_pivot.columns = [''.join(str(col)) for col in df_pivot.columns]
+
+                # Convert the index to columns
+                df_output = df_pivot.reset_index()
+
+
     df_output.fillna(0, inplace=True)
 
     # Display the DataFrame
@@ -107,7 +51,34 @@ def analyzeEmbeddingFiles(cfg, logger):
     df_output.columns = df_output.columns.str.replace('R', '_reviewed')
 
     # Write the DataFrame to a CSV file
-    df_output.to_csv(os.path.join(cfg["EMBEDDINGS"]["uniprotfolder"], cfg["EMBEDDINGS"]["outputdatasetname"] + "_species_counts.csv"), index=True)
+    df_output.to_csv(os.path.join(cfg["UNIPROT"]["go_folder"], cfg["UNIPROT"]["datasetname"] + "_species_counts.csv"), index=True)
     logger.log_message(f"File total_species_counts.csv saved in {val_folder}")
 
     return
+
+if __name__ == "__main__":
+
+    import logging
+    import sys
+
+    class CustomLogger(logging.Logger):
+        def __init__(self, name, level=logging.NOTSET):
+            super().__init__(name, level)
+
+        def log_message(self, message, *args, **kwargs):
+            print(message)
+
+    cfg = {
+        "UNIPROT": {
+            "go_folder": "Original Input//tmp",
+            "datasetname": "Terrabacteria"
+        }
+    }
+
+    logger = CustomLogger('test')
+    logger.setLevel(logging.DEBUG)
+    ch = logging.StreamHandler(sys.stdout)
+    ch.setLevel(logging.DEBUG)
+    logger.addHandler(ch)
+
+    analyzeEmbeddingFiles(cfg, logger)

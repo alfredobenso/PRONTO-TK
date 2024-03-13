@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.utils.data as Data
 import pandas as pd
 import os
-from model_util import newModel1, newModel2
+from model_util import *
 
 '''
 This function is used to validate a model using a dataset. 
@@ -27,7 +27,6 @@ def DL_validate(inputModel, model_type, inputData, outputFile, logger, validatio
         jj_all_data = jj_all_data[jj_all_data['Species'].isin(validationSpecies)]
         jj_all_data = jj_all_data.reset_index(drop=True)
 
-    #if jj_all_data is empty, return
     if jj_all_data.empty:
         logger.log_message (f"Not enough data to validate the Species {validationSpecies}. Skipping...");
         return
@@ -39,10 +38,8 @@ def DL_validate(inputModel, model_type, inputData, outputFile, logger, validatio
 
     model=torch.load(model_dir, map_location=device)
 
-    if model_type == 0:
-        net = newModel1().float().to(device)
-    else:
-        net = newModel2().float().to(device)
+    model_func = globals()[model_type]
+    net = model_func().float().to(device)
 
     net.load_state_dict(model['model'])
 
@@ -98,11 +95,11 @@ if __name__ == '__main__':
 
     model = filedialog.askopenfilename(initialdir = "./experiments/" + cfg.expConf['Folder'] + "/1.DL_Training/Model/", title="Select model ", filetypes=[("Text files", "*.pl")])
     dataset = filedialog.askopenfilename(initialdir = "./experiments/" + cfg.expConf['Folder'] + "/0.DataSet/", title="Select dataset ", filetypes=[("Text files", "*.csv")])
-    file_name = f'inference_{cfg.expConf["Acronym"]}_model_{cfg.expConf["big_or_small_model"] + 1}_{cfg.expConf["Type"]}.csv'
+    file_name = f'inference_{cfg.expConf["Acronym"]}_model_{cfg.expConf["model_name"]}_{cfg.expConf["Type"]}.csv'
 
 
     file_path = os.path.join("experiments", cfg.expConf["Folder"] + "/validations")
     if not os.path.exists(file_path):
         os.makedirs(file_path)
 
-    DL_validate(model, cfg.expConf["big_or_small_model"], dataset, os.path.join(file_path, file_name), torchdevice = cfg["ENVIRONMENT"]["torchdevice"])
+    DL_validate(model, cfg.expConf["model_name"], dataset, os.path.join(file_path, file_name), torchdevice = cfg["ENVIRONMENT"]["torchdevice"])

@@ -15,7 +15,7 @@ class LoggerHandler:
         self.logText.pack(pady=20)
 
     def setup_logger(self, silent_mode):
-        logger = logging.getLogger('RBPTK_logger')
+        logger = logging.getLogger('PRONTO_logger')
         logger.setLevel(logging.DEBUG)
         handler = logging.FileHandler(self.filename, "w")
         handler.setLevel(logging.DEBUG)

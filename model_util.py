@@ -9,7 +9,10 @@ import torchvision
 import torchvision.transforms as transforms
 import torch.utils.data as Data
 import torch.nn.utils.rnn as rnn_utils
-class newModel1(nn.Module):
+
+#class newModel1(nn.Module):
+class RBP_TSTL_big(nn.Module):
+
     def __init__(self, vocab_size=26):
         super().__init__()
         self.hidden_dim = 256
@@ -61,7 +64,8 @@ class newModel1(nn.Module):
         # print('output.shape',output.shape)
         output=self.block1(output)
         return self.block2(output)
-class newModel2(nn.Module):
+class RBP_TSTL_small(nn.Module):
+#class newModel2(nn.Module):
     def __init__(self, vocab_size=26):
         super().__init__()
         self.hidden_dim = 48

@@ -141,7 +141,7 @@ def filterDataSet(cfg, logger):
 
         if cfg["tmp"]["createTT"]:
             # ******* TRAIN/TEST FILTERS
-            jj_all_data_TT = applyFilters2DF(jj_all_data, labelConfig(cfg, "TrainTest"), logger) #TT Test Train
+            jj_all_data_TT = applyFilters2DF(jj_all_data, labelConfig(cfg, "TRAINTEST"), logger) #TT Test Train
             #Save the datasets to csv files
             #jj_all_data_TT = jj_all_data_TT.drop(columns=["Annotation", "Reviewed"])
             outFile = os.path.join(pre_input_prc_folder_out, "dataset_TT.csv")
@@ -154,10 +154,10 @@ def filterDataSet(cfg, logger):
 
         if cfg["tmp"]["createFT"]:
             #******* FINETUNING FILTERS
-            if "FineTuning" in cfg:
+            if "FINETUNING" in cfg:
                 #I need to remove from jj_all_data the rows that are already in jj_all_data_TT
                 jj_all_data_FT = jj_all_data[~jj_all_data.index.isin(jj_all_data_TT.index)]
-                jj_all_data_FT = applyFilters2DF(jj_all_data_FT, labelConfig(cfg, "FineTuning"), logger) #FT Fine Tuning
+                jj_all_data_FT = applyFilters2DF(jj_all_data_FT, labelConfig(cfg, "FINETUNING"), logger) #FT Fine Tuning
                 outFile = os.path.join(pre_input_prc_folder_out, "dataset_FT.csv")
                 jj_all_data_FT.to_csv(outFile, ",", mode="w", header = True, index=False)
                 logger.log_message(f"FT Dataset created...", progress=0.7)
@@ -167,17 +167,17 @@ def filterDataSet(cfg, logger):
 
         if cfg["tmp"]["createFV"] or cfg["GENERAL"]["type"] == "leaveoneout":
             if cfg["GENERAL"]["type"] == "leaveoneout":
-                if "Validation" in cfg:
-                    jj_all_data_FV = applyFilters2DF(jj_all_data, labelConfig(cfg, "Validation"), logger)  # FV Final Validation - The code will make sure that validation and train/test never overlap
+                if "VALIDATION" in cfg:
+                    jj_all_data_FV = applyFilters2DF(jj_all_data, labelConfig(cfg, "VALIDATION"), logger)  # FV Final Validation - The code will make sure that validation and train/test never overlap
                 else:
                     jj_all_data_FV = applyFilters2DF(jj_all_data, {}, logger)  # FV Final Validation - The code will make sure that validation and train/test never overlap
             #******* VALIDATION FILTERS
             else:
                 # I need to remove from jj_all_data the rows that are already in jj_all_data_TT and jj_all_data_FT
                 jj_all_data_FV = jj_all_data[~jj_all_data.index.isin(jj_all_data_TT.index)]
-                if "FineTuning" in cfg:
+                if "FINETUNING" in cfg:
                     jj_all_data_FV = jj_all_data_FV[~jj_all_data_FV.index.isin(jj_all_data_FT.index)]
-                jj_all_data_FV = applyFilters2DF(jj_all_data_FV, labelConfig(cfg, "Validation"), logger) #FV Final Validation
+                jj_all_data_FV = applyFilters2DF(jj_all_data_FV, labelConfig(cfg, "VALIDATION"), logger) #FV Final Validation
 
             if len(jj_all_data_FV) > 0:
                 outFile = os.path.join(pre_input_prc_folder_out, "dataset_FV.csv")
@@ -195,12 +195,12 @@ def filterDataSet(cfg, logger):
         logger.log_message(f"\t\tTest: 1: {len(jj_all_data_TT[(jj_all_data_TT['Label'] == 1) & (jj_all_data_TT['bin'] == 'test')])} - 0: {len(jj_all_data_TT[(jj_all_data_TT['Label'] == 0) & (jj_all_data_TT['bin'] == 'test')])}")
         logger.log_message(f"\t\tVal: 1: {len(jj_all_data_TT[(jj_all_data_TT['Label'] == 1) & (jj_all_data_TT['bin'] == 'val')])} - 0: {len(jj_all_data_TT[(jj_all_data_TT['Label'] == 0) & (jj_all_data_TT['bin'] == 'val')])}")
         logger.log_message("*" * 80)
-        if "FineTuning" in cfg:
+        if "FINETUNING" in cfg:
             logger.log_message("Fine Tuning (FT):")
             logger.log_message(f"Total number of Label 1 in the FineTuning dataset: {len(jj_all_data_FT[jj_all_data_FT['Label'] == 1])}")
             logger.log_message(f"Total number of Label 0 in the FineTuning dataset: {len(jj_all_data_FT[jj_all_data_FT['Label'] == 0])}")
             logger.log_message("*" * 80)
-        if "Validation" in cfg or cfg["GENERAL"]["type"] == "leaveoneout":
+        if "VALIDATION" in cfg or cfg["GENERAL"]["type"] == "leaveoneout":
             logger.log_message(f"Total number of rows in the Validation dataset: {len(jj_all_data_FV)}")
             logger.log_message(f"Total number of Label 1 in the Validation dataset: {len(jj_all_data_FV[jj_all_data_FV['Label'] == 1])}")
             logger.log_message(f"Total number of Label 0 in the Validation dataset: {len(jj_all_data_FV[jj_all_data_FV['Label'] == 0])}")

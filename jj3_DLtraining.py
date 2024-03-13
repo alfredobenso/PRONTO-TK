@@ -8,7 +8,7 @@ from termcolor import colored
 from sklearn.metrics import precision_recall_curve, auc, roc_auc_score
 import numpy as np
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, matthews_corrcoef
-from model_util import newModel1, newModel2
+from model_util import *
 import os
 
 '''
@@ -59,12 +59,12 @@ def DL_train(cfg, EPOCHS, LR, BATCH_SIZE, logger = "", load_model_dir = "", inpu
         os.makedirs(model_dir_path)
 
     if load_model_dir == "":
-        logits_output = os.path.join(model_dir_path, f'M_{cfg["GENERAL"]["acronym"]}_epochs_{EPOCHS}_lr_{LR:.7f}_model_{cfg["TrainTest"]["big_or_small_model"] + 1}_batch_{BATCH_SIZE}_exclude_{excludeSpeciesGroup}_logits.csv')
-        model_filename = f'M_{cfg["GENERAL"]["acronym"]}_epochs_{EPOCHS}_lr_{LR:.7f}_model_{cfg["TrainTest"]["big_or_small_model"] + 1}_batch_{BATCH_SIZE}_exclude_{excludeSpeciesGroup}.pl'
+        logits_output = os.path.join(model_dir_path, f'M_{cfg["GENERAL"]["acronym"]}_epochs_{EPOCHS}_lr_{LR:.7f}_model_{cfg["TRAINTEST"]["model_name"]}_batch_{BATCH_SIZE}_exclude_{excludeSpeciesGroup}_logits.csv')
+        model_filename = f'M_{cfg["GENERAL"]["acronym"]}_epochs_{EPOCHS}_lr_{LR:.7f}_model_{cfg["TRAINTEST"]["model_name"]}_batch_{BATCH_SIZE}_exclude_{excludeSpeciesGroup}.pl'
         model_loc = os.path.join(model_dir_path, model_filename)
     else:
-        logits_output = os.path.join(model_dir_path, f'M_FT_origin_{input_modelstring}_epochs_{EPOCHS}_lr_{LR:.7f}_model_{cfg["TrainTest"]["big_or_small_model"] + 1}_batch_{BATCH_SIZE}_exclude_{excludeSpeciesGroup}_logits.csv')
-        model_filename = f'M_FT_origin_{input_modelstring}_epochs_{EPOCHS}_lr_{LR:.7f}_model_{cfg["TrainTest"]["big_or_small_model"] + 1}_batch_{BATCH_SIZE}_exclude_{excludeSpeciesGroup}.pl'
+        logits_output = os.path.join(model_dir_path, f'M_FT_origin_{input_modelstring}_epochs_{EPOCHS}_lr_{LR:.7f}_model_{cfg["TRAINTEST"]["model_name"]}_batch_{BATCH_SIZE}_exclude_{excludeSpeciesGroup}_logits.csv')
+        model_filename = f'M_FT_origin_{input_modelstring}_epochs_{EPOCHS}_lr_{LR:.7f}_model_{cfg["TRAINTEST"]["model_name"]}_batch_{BATCH_SIZE}_exclude_{excludeSpeciesGroup}.pl'
         model_loc = os.path.join(model_dir_path, model_filename)
 
     logger.log_message (f"Output Model: {model_filename}")
@@ -77,7 +77,7 @@ def DL_train(cfg, EPOCHS, LR, BATCH_SIZE, logger = "", load_model_dir = "", inpu
 
     #if excludeSpecies is not empty, exclude from the dataset the species in the list - This is for LEAVE ONE OUT
     if excludeSpeciesGroup >= 0:
-        jj_all_data = jj_all_data[~jj_all_data['Species'].isin(cfg["TrainTest"]["leaveoneoutspecies"][excludeSpeciesGroup])]
+        jj_all_data = jj_all_data[~jj_all_data['Species'].isin(cfg["TRAINTEST"]["leaveoneoutspecies"][excludeSpeciesGroup])]
         logger.log_message("*" * 80)
         logger.log_message (f"Leave-One-Out Species: {excludeSpeciesGroup}")
 
@@ -130,13 +130,17 @@ def DL_train(cfg, EPOCHS, LR, BATCH_SIZE, logger = "", load_model_dir = "", inpu
 
 
     ############################
+    model_name = cfg["TRAINTEST"]["model_name"]
+    model_func = globals()[model_name]
+    net = model_func().float().to(device)
+    logger.log_message(f'Trained model: {cfg["TRAINTEST"]["model_name"]}')
 
-    if cfg["TrainTest"]["big_or_small_model"] == 0:
-        logger.log_message("Model 1")
-        net = newModel1().float().to(device)
-    else:
-        logger.log_message("Model 2")
-        net = newModel2().float().to(device)
+    # if cfg["TRAINTEST"]["big_or_small_model"] == 0:
+    #     logger.log_message("Model 1")
+    #     net = newModel1().float().to(device)
+    # else:
+    #     logger.log_message("Model 2")
+    #     net = newModel2().float().to(device)
         # state_dict=torch.load('/content/Model/pretrain.pl')
         # net.load_state_dict(state_dict['model'])
 
