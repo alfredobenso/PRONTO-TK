@@ -25,6 +25,10 @@ def compute_validation_metrics(file_path):
     # Load the CSV file
     df = pd.read_csv(file_path)
 
+    #If the column Label has only -1, return empty dataframe
+    if df['Label'].nunique() == 1 and df['Label'].unique()[0] == -1:
+        return None
+
     # Display basic statistics for probabilities of label 0 and 1
     print("Basic Statistics for Probabilities:\n")
     print(df.groupby('Species')[['0', '1']].describe())
@@ -38,8 +42,8 @@ def compute_validation_metrics(file_path):
         # Assuming label 1 is the positive class and using 0.5 as threshold
         predictions = df_specie['1'] >= 0.5
         accuracy = accuracy_score(df_specie['Label'], predictions)
-        precision, recall, _, _ = precision_recall_fscore_support(df_specie['Label'], predictions, average='binary')
-        metrics_list.append({'Specie': specie, 'Accuracy': accuracy, 'Precision': precision, 'Recall': recall})
+        precision, recall, fscore, _ = precision_recall_fscore_support(df_specie['Label'], predictions, average='binary')
+        metrics_list.append({'Species': specie, 'Accuracy': accuracy, 'Precision': precision, 'Recall': recall, 'F-score': fscore})
 
     # Convert list to DataFrame
     metrics_df = pd.DataFrame(metrics_list)
@@ -68,7 +72,11 @@ def analyze_and_plot_validation_results(logger, df, folder_path, file_name):
     print(tabulate(stats, headers='keys', tablefmt='fancy_grid'))
 
     #Print how many rows have the column 1 > 0,75
-    logger.log_message(f"Rows with column 1 > 0.75: {len(df[df['1'] > 0.75])}")
+    logger.log_message(f"{file_name}")
+    logger.log_message(f"Total inferred proteins: {len(df)}")
+    logger.log_message(f"Rows with Label '1' > 0.75: {len(df[df['1'] > 0.75])} ({100 * len(df[df['1'] > 0.75]) / len(df):.2f}%)")
+    logger.log_message(f"Rows with Label '1' between 0.25 and 0.75: {len(df[(df['1'] >= 0.25) & (df['1'] <= 0.75)])} ({100 * len(df[(df['1'] >= 0.25) & (df['1'] <= 0.75)]) / len(df):.2f}%)")
+    logger.log_message(f"Rows with Label '1' < 0.25: {len(df[df['1'] < 0.25])} ({100 * len(df[df['1'] < 0.25]) / len(df):.2f}%)")
 
     # Compute additional metrics: accuracy, precision, and recall
     print("Accuracy, Precision, and Recall for Each Specie:")
@@ -81,7 +89,7 @@ def analyze_and_plot_validation_results(logger, df, folder_path, file_name):
             continue
         predictions = df_specie['1'] >= 0.5
         accuracy = accuracy_score(df_specie['Label'], predictions)
-        precision, recall, _, _ = precision_recall_fscore_support(df_specie['Label'], predictions, average='binary')
+        precision, recall, fscore, _ = precision_recall_fscore_support(df_specie['Label'], predictions, average='binary')
 
         # If in the log file there is the column Entry Name, then execute the following code
         if 'Entry Name' in df_specie.columns and 'Annotation' in df_specie.columns:
@@ -93,9 +101,9 @@ def analyze_and_plot_validation_results(logger, df, folder_path, file_name):
                 if len(df_annot[(df_annot['Label'] == 1)]) > 0:
                         casesCount += f"{annotation}: {100 * len(df_annot[(df_annot['Label'] == 1) & (df_annot['1'] >= 0.5)]) / len(df_annot[(df_annot['Label'] == 1)]):.4f} % ({len(df_annot[(df_annot['Label'] == 1) & (df_annot['1'] >= 0.5)])}/{len(df_annot[(df_annot['Label'] == 1)])})\n"
 
-            metrics_list.append({'Specie': specie, 'Accuracy': accuracy, 'Precision': precision, 'Recall': recall, 'TP/L_1': casesCount})
+            metrics_list.append({'Species': specie, 'Accuracy': accuracy, 'Precision': precision, 'Recall': recall, 'FScore': fscore, 'TP/L_1': casesCount})
         else:
-            metrics_list.append({'Specie': specie, 'Accuracy': accuracy, 'Precision': precision, 'Recall': recall})
+            metrics_list.append({'Species': specie, 'Accuracy': accuracy, 'Precision': precision, 'Recall': recall, 'FScore': fscore})
 
     # Convert list to DataFrame
     metrics_df = pd.DataFrame(metrics_list)
@@ -106,7 +114,7 @@ def analyze_and_plot_validation_results(logger, df, folder_path, file_name):
     if len(metrics_df) == 0:
         #draw and save a violin plot with the distribution of probabilities for Column '1' for all Species (not separated)
         fig, ax = plt.subplots()
-        ax = sns.violinplot(x='Species', y='1', data=df, ax=ax, inner=None)
+        ax = sns.violinplot(x='Species', y='1', data=df, ax=ax, inner=None, scale="area")
         #add scatter
         sns.stripplot(x="Species", y='1', data=df, ax=ax, color='0.3', jitter=0.3, size=2.5)
         ax.set_title(f'Distribution of Probabilities of Label 1 for All Species')
@@ -119,6 +127,8 @@ def analyze_and_plot_validation_results(logger, df, folder_path, file_name):
     else:
         print(tabulate(metrics_df, headers='keys', tablefmt='fancy_grid'))
         file_name = file_name.replace(".csv", "_results_with_annotations.csv")
+        #sort the dataframe by Specie
+        metrics_df = metrics_df.sort_values(by='Species')
         metrics_df.to_csv(os.path.join(folder_path, file_name), index=False)
 
         # Create a figure with four subplots
@@ -155,8 +165,8 @@ def analyze_and_plot_validation_results(logger, df, folder_path, file_name):
                         df_label = pd.concat([df_label, new_row], ignore_index=True)
 
             # Plot violin plot, stripplot, and other elements
-            ax = sns.violinplot(x="Species", y='1', data=df_label, ax=axs[i], inner=None)
-            sns.stripplot(x="Species", y='1', data=df_label, ax=axs[i], color='0.3', jitter=0.3, size=2.5)
+            ax = sns.violinplot(x="Species", y='1', data=df_label, ax=axs[i], inner=None, scale="area")
+            sns.stripplot(x="Species", y='1', data=df_label, ax=axs[i], color='0.3', jitter=0.3, size=2)
             ax.axhline(0.5, color='red', linestyle='--')  # Add horizontal line at 0.5
 
             # Calculate and format data for annotations
@@ -171,15 +181,24 @@ def analyze_and_plot_validation_results(logger, df, folder_path, file_name):
                     conf_int = 0
                     conf_int_text = "CI: N/A"
 
-                text = f"Average: {mean:.2f}\n{conf_int_text}\nMedian: {median:.2f}\nCount: {len(df_specie)}"
-                ax.text(j, mean, text, color='black', ha='center')
+                text = f"Average: {mean:.3f}\n{conf_int_text}\nMedian: {median:.3f}\nCount: {len(df_specie)}"
+                # Define thresholds
+                thresholds = [0.15, 0.35] if label in ['TN', 'FN'] else [0.65, 0.85]
 
-            ax.set_title(f"Distribution of Probabilities of Label {txt_label} for {label} for Each Specie")
-            ax.set_xticklabels(species, rotation=45)
+                # Check if mean is too close to 0 or 1
+                if mean < thresholds[0] or mean > thresholds[1]:
+                    text_y_coordinate = 0.25 + (0.5 if label in ['TP', 'FP'] else 0)
+                else:
+                    text_y_coordinate = mean
+                ax.text(j, text_y_coordinate, text, color='black', ha='center')
+
+            ax.set_title(f"Distribution of Probabilities of Label {txt_label} for {label} for Each Species")
+            ax.set_xticks(range(len(species)))
+            ax.set_xticklabels(species)
 
         # Create a table with, for each Species, Accuracy, Precision, and Recall
         table_data = metrics_df[['Accuracy', 'Precision', 'Recall']].values.round(4)
-        table_rows = metrics_df['Specie']
+        table_rows = metrics_df['Species']
         table_columns = ['Accuracy', 'Precision', 'Recall']
 
         base_height_per_row = 0.15
@@ -188,7 +207,7 @@ def analyze_and_plot_validation_results(logger, df, folder_path, file_name):
         # Ensure the total height is within the figure (0 to 1)
         total_height = min(1, max(0, total_height))
 
-        table = axs[3].table(cellText=table_data, rowLabels=table_rows, colLabels=table_columns, loc='center', colWidths=[0.1, 0.1, 0.1, 0.1], cellLoc='center', cellColours=None, bbox=[0, -1.8, 1, total_height])
+        table = axs[3].table(cellText=table_data, rowLabels=table_rows, colLabels=table_columns, loc='center', colWidths=[0.1, 0.1, 0.1, 0.1], cellLoc='center', cellColours=None, bbox=[0.2, -1.8, 0.6, total_height])
 
         table.auto_set_font_size(False)
         table.set_fontsize(12)
@@ -214,19 +233,19 @@ This function is used to analyze the validation results of a folder with CSV fil
 def analyseValidationFolder(logger, folder_path):
 
     # Initialize a list to store the results
-    all_results_df = pd.DataFrame(columns=['FileName', 'Origin', 'Specie', 'Accuracy', 'Precision', 'Recall', 'Epochs', 'Learning Rate', 'Model', 'Batch', 'Type'])
+    all_results_df = pd.DataFrame(columns=['FileName', 'Origin', 'Species', 'Accuracy', 'Precision', 'Recall', 'Epochs', 'Learning Rate', 'Model', 'Batch', 'Type'])
 
     # Loop over all CSV files in the selected folder
     for file_name in os.listdir(folder_path):
         if file_name.endswith('.csv') and not(file_name.endswith('results.csv')):
             # Extract the number of epochs, learning rate, and model used from the file name
             #match = re.match(r'inference_epochs_(\d+)_lr_(\d+\.\d+)_model_(\d+)_(\w+).csv', file_name)
-            match = re.match(r'inference_epochs_(\d+)_lr_(\d+\.\d+)_model_(\d+)_batch_(\d+)_(\w+)?\.csv', file_name)            #match = re.match(r'inference_epochs_(\d+)_lr_(\d+\.\d+)_model_(\d+)\.csv', file_name)
+            match = re.match(r'inference_TT_(.+)_epochs_(\d+)_lr_(\d+\.\d+)_model_(.+)_batch_(\d+)_(.+)?\.csv', file_name)            #match = re.match(r'inference_epochs_(\d+)_lr_(\d+\.\d+)_model_(\d+)\.csv', file_name)
             if match:
-                epochs, lr, model, batch, type = match.groups()
+                origin, epochs, lr, model, batch, type = match.groups()
             else:
                 match = re.match(
-                    r'inference_FT_origin_(.+)_epochs_(\d+)_lr_(\d+\.\d+)_model_(\d+)_batch_(\d+)_([-\w]+)?\.csv',
+                    r'inference_FT_origin_(.+)_epochs_(\d+)_lr_(\d+\.\d+)_model_(.+)_batch_(\d+)_(.+)?\.csv',
                     file_name)
                 if match:
                     origin, epochs, lr, model, batch, type = match.groups()
@@ -234,58 +253,79 @@ def analyseValidationFolder(logger, folder_path):
             if match:
                 # Compute the accuracy, precision, and recall for the current CSV file
                 metrics_df = compute_validation_metrics(os.path.join(folder_path, file_name))
+                _EXPECTED_LABEL = True
+                if metrics_df is None:
+                    _EXPECTED_LABEL = False
+                    metrics_df = pd.DataFrame(columns=['FileName', 'Origin', 'Species', 'Accuracy', 'Precision', 'Recall', 'Epochs', 'Learning Rate', 'Model', 'Batch', 'Type'])
+                    #append an empty row
+                    metrics_df.loc[len(metrics_df)] = [file_name, origin, "all", None, None, None, epochs, lr, model, batch, type]
+                else:
+                    #Add to metrics_df the columns Epochs, Learning Rate, Model
+                    #remove the last "-<int> from the origin. Origin may have many dashes inside
+                    origin = re.sub(r'_exclude_\d+$', '', origin)
+                    origin = re.sub(r'-exclude-\d+$', '', origin)
 
-                #Add to metrics_df the columns Epochs, Learning Rate, Model
-                #remove the last "-<int> from the origin. Origin may have many dashes inside
-                metrics_df['Origin'] = re.sub(r'-\d+$', '', origin)
-                metrics_df['Epochs'] = epochs
-                metrics_df['Learning Rate'] = lr
-                metrics_df['Batch'] = batch
-                metrics_df['Type'] = type
-                metrics_df['Model'] = model
-                metrics_df['FileName'] = file_name
+                    metrics_df['Origin'] = origin
+                    metrics_df['Epochs'] = epochs
+                    metrics_df['Learning Rate'] = lr
+                    metrics_df['Batch'] = batch
+                    metrics_df['Type'] = type
+                    metrics_df['Model'] = model
+                    metrics_df['FileName'] = file_name
 
                 # Append the metrics for the current CSV file to all_results_df
                 all_results_df.loc[len(all_results_df)] = metrics_df.iloc[0]
 
-    all_results_df['Accuracy'] = pd.to_numeric(all_results_df['Accuracy'], errors='coerce')
-    all_results_df['Precision'] = pd.to_numeric(all_results_df['Precision'], errors='coerce')
-    all_results_df['Recall'] = pd.to_numeric(all_results_df['Recall'], errors='coerce')
+    if _EXPECTED_LABEL:
+        all_results_df['Accuracy'] = pd.to_numeric(all_results_df['Accuracy'], errors='coerce')
+        all_results_df['Precision'] = pd.to_numeric(all_results_df['Precision'], errors='coerce')
+        all_results_df['Recall'] = pd.to_numeric(all_results_df['Recall'], errors='coerce')
 
-    # After the loop, all_results_df will have the results for each species from each file and for each origin
-    # You can then plot these results
+        # After the loop, all_results_df will have the results for each species from each file and for each origin
+        # You can then plot these results
 
-    #Now I want to add new rows to the df with Origin, Accuracy, Precision, Recall, Epochs, Learning Rate, Model, Batch grouped by Origin. For each Origin, EPOCHS, LR, Model, Batch, I want the mean of Accuracy, Precision, Recall. In these rows, Species will be set to "all"
-    #for each Origin, EPOCHS, LR, Model, Batch, compute the mean of Accuracy, Precision, Recall and append a new row in all_results_df with Species="all"
-    for origin in all_results_df['Origin'].unique():
-        for epochs in all_results_df['Epochs'].unique():
-            for lr in all_results_df['Learning Rate'].unique():
-                for model in all_results_df['Model'].unique():
-                    for batch in all_results_df['Batch'].unique():
-                        #compute the mean of Accuracy, Precision, Recall for the current Origin, EPOCHS, LR, Model, Batch
-                        mean_accuracy = all_results_df[(all_results_df['Origin'] == origin) & (all_results_df['Epochs'] == epochs) & (all_results_df['Learning Rate'] == lr) & (all_results_df['Model'] == model) & (all_results_df['Batch'] == batch)]['Accuracy'].mean()
-                        mean_precision = all_results_df[(all_results_df['Origin'] == origin) & (all_results_df['Epochs'] == epochs) & (all_results_df['Learning Rate'] == lr) & (all_results_df['Model'] == model) & (all_results_df['Batch'] == batch)]['Precision'].mean()
-                        mean_recall = all_results_df[(all_results_df['Origin'] == origin) & (all_results_df['Epochs'] == epochs) & (all_results_df['Learning Rate'] == lr) & (all_results_df['Model'] == model) & (all_results_df['Batch'] == batch)]['Recall'].mean()
-                        #append a new row in all_results_df with Species="all"
-                        all_results_df.loc[len(all_results_df)] = [None, origin, "all", mean_accuracy, mean_precision, mean_recall, epochs, lr, model, batch, "ALL"]
+        #Now I want to add new rows to the df with Origin, Accuracy, Precision, Recall, Epochs, Learning Rate, Model, Batch grouped by Origin. For each Origin, EPOCHS, LR, Model, Batch, I want the mean of Accuracy, Precision, Recall. In these rows, Species will be set to "all"
+        #for each Origin, EPOCHS, LR, Model, Batch, compute the mean of Accuracy, Precision, Recall and append a new row in all_results_df with Species="all"
+        for origin in all_results_df['Origin'].unique():
+            for epochs in all_results_df['Epochs'].unique():
+                for lr in all_results_df['Learning Rate'].unique():
+                    for model in all_results_df['Model'].unique():
+                        for batch in all_results_df['Batch'].unique():
+                            #compute the mean of Accuracy, Precision, Recall for the current Origin, EPOCHS, LR, Model, Batch
+                            mean_accuracy = all_results_df[(all_results_df['Origin'] == origin) & (all_results_df['Epochs'] == epochs) & (all_results_df['Learning Rate'] == lr) & (all_results_df['Model'] == model) & (all_results_df['Batch'] == batch)]['Accuracy'].mean()
+                            mean_precision = all_results_df[(all_results_df['Origin'] == origin) & (all_results_df['Epochs'] == epochs) & (all_results_df['Learning Rate'] == lr) & (all_results_df['Model'] == model) & (all_results_df['Batch'] == batch)]['Precision'].mean()
+                            mean_recall = all_results_df[(all_results_df['Origin'] == origin) & (all_results_df['Epochs'] == epochs) & (all_results_df['Learning Rate'] == lr) & (all_results_df['Model'] == model) & (all_results_df['Batch'] == batch)]['Recall'].mean()
+                            #append a new row in all_results_df with Species="all"
+                            all_results_df.loc[len(all_results_df)] = [None, origin, "all", mean_accuracy, mean_precision, mean_recall, epochs, lr, model, batch, "ALL"]
 
-    #From the rows that have Species == all, compute the best row in terms of Accuracy, Precision, and Recall
-    best_index = all_results_df[all_results_df['Specie'] == 'all'][['Accuracy', 'Precision', 'Recall']].mean(axis=1).idxmax()
+        #remove rows that have the column Species != "all and have nan in the columns Accuracy, Precision, Recall (they are combinations that do not exist)
+        # Create a mask for rows where 'Type' is not 'ALL' and 'Accuracy', 'Precision', or 'Recall' is NaN
+        #mask = (all_results_df['Type'] != 'ALL') & all_results_df[['Accuracy', 'Precision', 'Recall']].isna().any(axis=1)
+        # Use the mask to drop these rows from all_results_df
+        #all_results_df = all_results_df[~mask]
+        if _EXPECTED_LABEL:
+            all_results_df = all_results_df.dropna(subset=['Accuracy', 'Precision', 'Recall'])
 
-    # Get the row at this index
-    best_row = all_results_df.loc[best_index]
+            try:
+                #From the rows that have Species == all, compute the best row in terms of Accuracy, Precision, and Recall
+                best_index = all_results_df[all_results_df['Species'] == 'all'][['Accuracy', 'Precision', 'Recall']].mean(axis=1).idxmax()
 
-    # Extract the values of Epochs, Learning Rate, and Model from this row
-    best_epochs = best_row['Epochs']
-    best_learning_rate = best_row['Learning Rate']
-    best_model = best_row['Model']
-    best_batch = best_row['Batch']
-    best_origin = best_row['Origin']
-    # Print the best combination
-    logger.log_message(f'Best combination: Origin={best_origin} Epochs={best_epochs}, Learning Rate={best_learning_rate}, Batch={best_batch}, Model={best_model}')
+                # Get the row at this index
+                best_row = all_results_df.loc[best_index]
+
+                # Extract the values of Epochs, Learning Rate, and Model from this row
+                best_epochs = best_row['Epochs']
+                best_learning_rate = best_row['Learning Rate']
+                best_model = best_row['Model']
+                best_batch = best_row['Batch']
+                best_origin = best_row['Origin']
+                # Print the best combination
+                logger.log_message(f'Best combination: Origin={best_origin} Epochs={best_epochs}, Learning Rate={best_learning_rate}, Batch={best_batch}, Model={best_model}')
+            except:
+                pass
 
     # For each row with Species = all
-    for index, row in all_results_df[all_results_df['Specie'] == 'all'].iterrows():
+    for index, row in all_results_df[all_results_df['Species'] == 'all'].iterrows():
         # Get the filename of all the files with the same combination of Origin, Epochs, Learning Rate, Model, Batch
         files = all_results_df[(all_results_df['Origin'] == row['Origin']) & (all_results_df['Epochs'] == row['Epochs']) & (all_results_df['Learning Rate'] == row['Learning Rate']) & (all_results_df['Model'] == row['Model']) & (all_results_df['Batch'] == row['Batch'])]['FileName']
         #remove rows in files it the value is None
@@ -295,50 +335,52 @@ def analyseValidationFolder(logger, folder_path):
         df_all_species = pd.concat([pd.read_csv(os.path.join(folder_path, file)) for file in files])
         analyze_and_plot_validation_results(logger, df_all_species, folder_path, files.iloc[0])
 
-    #Count how many different combinations of Origin, Epochs, Learning Rate, Model, Batch are there where Species = all
-    combinations = all_results_df[all_results_df['Specie'] == 'all'][['Origin', 'Epochs', 'Learning Rate', 'Model', 'Batch']].drop_duplicates().shape[0]
+    if _EXPECTED_LABEL:
+        #Count how many different combinations of Origin, Epochs, Learning Rate, Model, Batch are there where Species = all
+        combinations = all_results_df[all_results_df['Species'] == 'all'][['Origin', 'Epochs', 'Learning Rate', 'Model', 'Batch']].drop_duplicates().shape[0]
 
-    #Create a color arra of combinations colors
-    color = cm.viridis([i/combinations for i in range(combinations)])
-    color = [f'rgba({int(c[0]*255)},{int(c[1]*255)},{int(c[2]*255)},0.8)' for c in color]
-    #create a new column Color
-    all_results_df['Color'] = ''
-    # For each row with Species = all
-    for index, row in all_results_df[all_results_df['Specie'] == 'all'].iterrows():
-        # Get the color for this combination
-        rowColor = color[all_results_df[all_results_df['Specie'] == 'all'][['Origin', 'Epochs', 'Learning Rate', 'Model', 'Batch']].drop_duplicates().index.get_loc(index)]        #Assign the same color to all rows with the same combination of Origin, Epochs, Learning Rate, Model, Batch
-        all_results_df.loc[all_results_df[
-            (all_results_df['Origin'] == row['Origin']) & (all_results_df['Epochs'] == row['Epochs']) & (
-                        all_results_df['Learning Rate'] == row['Learning Rate']) & (
-                        all_results_df['Model'] == row['Model']) & (
-                        all_results_df['Batch'] == row['Batch'])].index, 'Color'] = rowColor
-    # Create a size array where the size is larger for rows where Species = ALL
-    size_array = [20 if species == 'all' else 10 for species in all_results_df['Specie']]
+        #Create a color arra of combinations colors
+        color = cm.viridis([i/combinations for i in range(combinations)])
+        color = [f'rgba({int(c[0]*255)},{int(c[1]*255)},{int(c[2]*255)},0.8)' for c in color]
+        #create a new column Color
+        all_results_df['Color'] = ''
+        # For each row with Species = all
+        for index, row in all_results_df[all_results_df['Species'] == 'all'].iterrows():
+            # Get the color for this combination
+            rowColor = color[all_results_df[all_results_df['Species'] == 'all'][['Origin', 'Epochs', 'Learning Rate', 'Model', 'Batch']].drop_duplicates().index.get_loc(index)]        #Assign the same color to all rows with the same combination of Origin, Epochs, Learning Rate, Model, Batch
+            all_results_df.loc[all_results_df[
+                (all_results_df['Origin'] == row['Origin']) & (all_results_df['Epochs'] == row['Epochs']) & (
+                            all_results_df['Learning Rate'] == row['Learning Rate']) & (
+                            all_results_df['Model'] == row['Model']) & (
+                            all_results_df['Batch'] == row['Batch'])].index, 'Color'] = rowColor
+        # Create a size array where the size is larger for rows where Species = ALL
+        size_array = [20 if species == 'all' else 10 for species in all_results_df['Species']]
 
-    # Create a 3D scatter plot of accuracy, precision, and recall
-    fig = go.Figure(data=[go.Scatter3d(
-        x=all_results_df['Accuracy'],
-        y=all_results_df['Precision'],
-        z=all_results_df['Recall'],
-        mode='markers',
-        text=all_results_df[['Origin', 'Model', 'Learning Rate', 'Epochs', 'Batch', 'Specie']].apply(
-            lambda row: f'Origin: {row["Origin"]}, Model: {row["Model"]}, Learning Rate: {row["Learning Rate"]}, Epochs: {row["Epochs"]}, Batch: {row["Batch"]}, Species: {row["Specie"]}',
-            axis=1),
-        hoverinfo='text',
-        marker=dict(
-            size=size_array,
-            color=all_results_df['Color'],
-            colorscale='Viridis',  # choose a colorscale
-            opacity=0.8
-        )
-    )])
 
-    # Set labels
-    fig.update_layout(scene=dict(
-        xaxis_title='Cumulative Accuracy',
-        yaxis_title='Cumulative Precision',
-        zaxis_title='Cumulative Recall'))
-    fig.show()
+        # Create a 3D scatter plot of accuracy, precision, and recall
+        fig = go.Figure(data=[go.Scatter3d(
+            x=all_results_df['Accuracy'],
+            y=all_results_df['Precision'],
+            z=all_results_df['Recall'],
+            mode='markers',
+            text=all_results_df[['Origin', 'Model', 'Learning Rate', 'Epochs', 'Batch', 'Species']].apply(
+                lambda row: f'Origin: {row["Origin"]}, Model: {row["Model"]}, Learning Rate: {row["Learning Rate"]}, Epochs: {row["Epochs"]}, Batch: {row["Batch"]}, Species: {row["Species"]}',
+                axis=1),
+            hoverinfo='text',
+            marker=dict(
+                size=size_array,
+                color=all_results_df['Color'],
+                colorscale='Viridis',  # choose a colorscale
+                opacity=0.8
+            )
+        )])
+
+        # Set labels
+        fig.update_layout(scene=dict(
+            xaxis_title='Cumulative Accuracy',
+            yaxis_title='Cumulative Precision',
+            zaxis_title='Cumulative Recall'))
+        fig.show()
 
 
 if __name__ == "__main__":

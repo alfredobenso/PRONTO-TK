@@ -12,7 +12,7 @@ from model_util import *
 This function is used to validate a model using a dataset. 
 It takes as input the model, the dataset and the output file.
 '''
-def DL_validate(inputModel, model_type, inputData, outputFile, logger, validationSpecies = [], torchdevice = "mps"):
+def DL_validate(cfg, inputModel, model_name, inputData, outputFile, logger, validationSpecies = [], torchdevice = "mps"):
 
     model_dir=inputModel
 
@@ -34,14 +34,14 @@ def DL_validate(inputModel, model_type, inputData, outputFile, logger, validatio
     jjdata = torch.tensor(jj_all_data.loc[:, '0':'1023'].values)
 
     device = torch.device('cuda:0' if torch.cuda.is_available() else torchdevice)
+
     # device = torch.device("cpu")
-
-    model=torch.load(model_dir, map_location=device)
-
-    model_func = globals()[model_type]
+    model_func = globals()[cfg["TRAINTEST"]["model_name"]]
     net = model_func().float().to(device)
 
-    net.load_state_dict(model['model'])
+    model_dir = os.path.join(os.getcwd(), inputModel)
+    state_dict = torch.load(model_dir, map_location=device)
+    net.load_state_dict(state_dict['model'])
 
     data_iter = torch.utils.data.DataLoader(jjdata, batch_size=2048, shuffle=False)
 
@@ -76,7 +76,7 @@ def DL_validate(inputModel, model_type, inputData, outputFile, logger, validatio
 
     #if the outputFile already exists, append this dataframe to it
     if os.path.exists(outputFile):
-        df.to_csv(outputFile, mode='a', header=False, index=False)
+        df.to_csv(outputFile, mode='w', header=True, index=False)
     else:
         df.to_csv(outputFile, header=True, index=False)
 
@@ -88,18 +88,18 @@ if __name__ == '__main__':
     root.withdraw()
 
     #TO UPDATE with new configuration
-    file = filedialog.askopenfilename(initialdir = "./experiments/_configurations/", title="Select experiment configuration file ", filetypes=[("Text files", "*.py")])
-    cfgFile = os.path.basename(file).replace(".py", "")
+    file = filedialog.askopenfilename(initialdir = "./experiments/_configurations/", title="Select experiment configuration file ", filetypes=[("Text files", "*.ini")])
+    cfgFile = os.path.basename(file).replace(".ini", "")
     #import the configuration file
     cfg = importlib.import_module("experiments._configurations." + cfgFile)
 
     model = filedialog.askopenfilename(initialdir = "./experiments/" + cfg.expConf['Folder'] + "/1.DL_Training/Model/", title="Select model ", filetypes=[("Text files", "*.pl")])
     dataset = filedialog.askopenfilename(initialdir = "./experiments/" + cfg.expConf['Folder'] + "/0.DataSet/", title="Select dataset ", filetypes=[("Text files", "*.csv")])
-    file_name = f'inference_{cfg.expConf["Acronym"]}_model_{cfg.expConf["model_name"]}_{cfg.expConf["Type"]}.csv'
+    file_name = f'inference_TT_{cfg.expConf["Acronym"]}_model_{cfg.expConf["model_name"]}_{cfg.expConf["Type"]}.csv'
 
 
     file_path = os.path.join("experiments", cfg.expConf["Folder"] + "/validations")
     if not os.path.exists(file_path):
         os.makedirs(file_path)
 
-    DL_validate(model, cfg.expConf["model_name"], dataset, os.path.join(file_path, file_name), torchdevice = cfg["ENVIRONMENT"]["torchdevice"])
+    DL_validate(cfg, model, cfg.expConf["model_name"], dataset, os.path.join(file_path, file_name), torchdevice = cfg["ENVIRONMENT"]["torchdevice"])

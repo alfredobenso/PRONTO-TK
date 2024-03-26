@@ -115,7 +115,7 @@ def analyzeLog(logfile):
     if len(table_data) > 0:
         # Use plt.table directly with colWidths=[0.2]*len(table_columns) to make it span both columns
         table = axs[1].table(cellText=table_data, rowLabels=table_rows, colLabels=table_columns, loc='center',
-                             cellLoc='center', cellColours=None, bbox=[0, -0.7, 1, 0.4], colWidths=[0.2]*len(table_columns))
+                             cellLoc='center', cellColours=None, bbox=[0.2, -0.7, 0.6, 0.4], colWidths=[0.2]*len(table_columns))
         table.auto_set_font_size(False)
         table.set_fontsize(12)
     fig.suptitle(f'{phase} Results - Epochs: {epochs_count[current_experiment]}, Learning Rate: {initial_learning_rate}, Model: {model}', fontsize=16)

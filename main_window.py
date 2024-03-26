@@ -10,6 +10,7 @@ from CTkToolTip import CTkToolTip
 import webbrowser
 from process import myProcess
 from threads import *
+from config_window import *
 
 class MainWindow:
     '''
@@ -18,139 +19,144 @@ class MainWindow:
     def __init__(self):
         ctk.set_default_color_theme("green")
         self.window = ctk.CTk()
+        self.window.focus_force()  # Add this line to force focus on the window
         self.cfg_filename = ctk.filedialog.askopenfilename(title="Select configuration file", initialdir=os.path.join("experiments", "_configurations"),filetypes=(("INI files", "*.ini"), ("All files", "*.*")))
 
         if not self.cfg_filename:
             self.cfg = {}
             raise Exception("No configuration file selected - TBD: handle this case properly!")
         else:
-            self.cfg = self.read_configuration(self.cfg_filename)
+            self.cfg = read_configuration(self)
 
         self.window.geometry("1400x700")
         self.window.title("RBP ToolKit")
 
         self.my_font = ctk.CTkFont(family="Helvetica", size = 16, weight = "bold")
-        label = ctk.CTkLabel(self.window, text=f"{self.cfg['GENERAL']['name']}\n{self.cfg['GENERAL']['type'].capitalize()} Experiment", font=self.my_font)
-        label.pack(pady=(5, 10))
+        self.labelTitle = ctk.CTkLabel(self.window, text=f"{self.cfg['GENERAL']['name']}\n{self.cfg['GENERAL']['type'].capitalize()} Experiment", font=self.my_font)
+        self.labelTitle.pack(pady=(5, 10))
 
         button_frame = ctk.CTkFrame(self.window)
         button_frame.pack()
+
+        textBoxHeight = 4
 
         # Add the buttons to the new frame
         button_image = ctk.CTkImage(Image.open("assets/settings.icns"), size=(35, 35))
         self.buttonCfg = ctk.CTkButton(button_frame, text=f"Configure\n {self.cfg['GENERAL']['acronym']}", fg_color="lightgrey", text_color="black", image=button_image, command=self.open_cfg_window)
         self.buttonCfg.pack(side=ctk.LEFT)
 
-        button_image = ctk.CTkImage(Image.open("assets/execute.icns"), size=(35, 35))
-        self.buttonRun = ctk.CTkButton(button_frame, text="Run Data Pipeline", fg_color="white", text_color="black", image=button_image, command=self.run_full_uniprot_pipeline)
-        self.buttonRun.pack(side=ctk.LEFT, padx=(10,0))
+        if "UNIPROT" in self.cfg or "EMBEDDINGS" in self.cfg:
+            button_image = ctk.CTkImage(Image.open("assets/execute.icns"), size=(35, 35))
+            self.buttonRun = ctk.CTkButton(button_frame, text="Run Data Pipeline", fg_color="white", text_color="black", image=button_image, command=self.run_full_uniprot_pipeline)
+            self.buttonRun.pack(side=ctk.LEFT, padx=(10,0))
 
         button_image = ctk.CTkImage(Image.open("assets/refresh.png"), size=(20, 20))
         self.buttonRun = ctk.CTkButton(button_frame, text="Refresh", width=100, fg_color="lightgrey", text_color="black", image=button_image, command=self.checkIO)
         self.buttonRun.pack(fill=ctk.BOTH, side=ctk.LEFT, padx=(10,0))
 
-        textBoxHeight = 4
+        if "UNIPROT" in self.cfg or "EMBEDDINGS" in self.cfg:
+            frameDATA = ctk.CTkFrame(self.window, )
+            if "UNIPROT" in self.cfg:
+                pipeLabel = ctk.CTkLabel(frameDATA, text="Data Download and Embeddings Pipeline", anchor='nw', font=self.my_font)
+                pipeLabel.pack(padx=(0, 0), pady=(5,0))
+                self.buttonUPW = ctk.CTkButton(frameDATA, text="1. Download from UniProt", width=60, image=ctk.CTkImage(Image.open("assets/uniprot.png"), size=(60, 60)), command=self.run_pipeline_stage_jj0)
+                self.buttonUPW.pack(side=ctk.LEFT, padx=(20,0))
 
-        frameDATA = ctk.CTkFrame(self.window, )
-        pipeLabel = ctk.CTkLabel(frameDATA, text="Data Download and Embeddings Pipeline", anchor='nw', font=self.my_font)
-        pipeLabel.pack(padx=(0, 0), pady=(5,0))
-        self.buttonUPW = ctk.CTkButton(frameDATA, text="1. Download from UniProt", width=60, image=ctk.CTkImage(Image.open("assets/uniprot.png"), size=(60, 60)), command=self.run_pipeline_stage_jj0)
-        self.buttonUPW.pack(side=ctk.LEFT, padx=(20,0))
+            self.textboxDATA_UP = ctk.CTkButton(frameDATA, height=textBoxHeight, text="Uniprot Dataset", command=lambda: self.open_finder(os.path.dirname(self.cfg["UNIPROT"]["go_folder"])))
+            self.textboxDATA_UP.pack(pady=25, padx=(5,5), side=ctk.LEFT)
 
-        self.textboxDATA_UP = ctk.CTkButton(frameDATA, height=textBoxHeight, text="Uniprot Dataset", command=lambda: self.open_finder(os.path.dirname(self.cfg["UNIPROT"]["go_folder"])))
-        self.textboxDATA_UP.pack(pady=25, padx=(5,5), side=ctk.LEFT)
-        self.buttonEMB = ctk.CTkButton(frameDATA, text="2. Embeddings", image=ctk.CTkImage(Image.open("assets/embeddings.png"), size=(60, 60)), command=self.run_pipeline_stage_jj1)
-        self.buttonEMB.pack(side=ctk.LEFT)
-        self.textboxDATA_IN = ctk.CTkButton(frameDATA, height=textBoxHeight, text="Embeddings Dataset", command=lambda: self.open_finder(os.path.dirname(self.cfg["GENERAL"]["originaldataset"][0])))
-        self.textboxDATA_IN.pack(pady=25, padx=(5,0), side=ctk.LEFT)
-        frameDATA.pack(expand=True, pady=(20, 20), ipadx=5, ipady=20)
+            if "EMBEDDINGS" in self.cfg:
+                self.buttonEMB = ctk.CTkButton(frameDATA, text="2. Embeddings", image=ctk.CTkImage(Image.open("assets/embeddings.png"), size=(60, 60)), command=self.run_pipeline_stage_jj1)
+                self.buttonEMB.pack(side=ctk.LEFT)
+                self.textboxDATA_IN = ctk.CTkButton(frameDATA, height=textBoxHeight, text="Embeddings Dataset", command=lambda: self.open_finder(os.path.dirname(self.cfg["GENERAL"]["originaldataset"][0])))
+                self.textboxDATA_IN.pack(pady=25, padx=(5,0), side=ctk.LEFT)
+            frameDATA.pack(expand=True, pady=(20, 20), ipadx=5, ipady=20)
 
-        button_image = ctk.CTkImage(Image.open("assets/execute.icns"), size=(35, 35))
-        self.buttonRun = ctk.CTkButton(self.window, text="Run Training/Inference Pipeline", fg_color="white", text_color="black", image=button_image, command=self.run_full_pipeline)
-        self.buttonRun.pack(side=ctk.TOP, padx=(0,0))
+        if "TRAINTEST" in self.cfg or "FINETUNING" in self.cfg or "VALIDATION" in self.cfg:
+            button_image = ctk.CTkImage(Image.open("assets/execute.icns"), size=(35, 35))
+            self.buttonRun = ctk.CTkButton(self.window, text="Run Training/Inference Pipeline", fg_color="white", text_color="black", image=button_image, command=self.run_full_pipeline)
+            self.buttonRun.pack(side=ctk.TOP, padx=(0,0))
 
-        framePIPE = ctk.CTkFrame(self.window)
-        pipeLabel = ctk.CTkLabel(framePIPE, text="Training-Test/Fine Tuning/Inference Pipeline", anchor='nw', font=self.my_font)
-        pipeLabel.pack(padx=(0, 0), pady=(5, 0))
-
-        self.buttonDATA = ctk.CTkButton(framePIPE, text="1. Data Filters", image=ctk.CTkImage(Image.open("assets/data.png"), size=(60, 60)), command = self.run_pipeline_stage_jj2)
-        self.buttonDATA.pack(side=ctk.LEFT, padx=(5, 0))
-
-        # Create a new frame for the button and textboxes
-        frameDF = ctk.CTkFrame(framePIPE)
-        frameDF.pack(side=ctk.LEFT, expand=True)
-
-        self.textboxDATA_OUT = ctk.CTkButton(frameDF, height=textBoxHeight, text="TT/FT/FV Datasets", command=lambda: self.open_finder(os.path.join("experiments", self.cfg["GENERAL"]["folder"], "0.DataSet")))
-        self.textboxDATA_OUT.pack(pady=(25,2), padx=(2, 25), side=ctk.TOP)
-
-        self.textboxTT_DATA = ctk.CTkButton(frameDF, height=textBoxHeight, text="TT Dataset", command=lambda: self.open_finder(os.path.join("experiments", self.cfg["GENERAL"]["folder"], "0.DataSet")))
-        self.textboxTT_DATA.pack(pady=(2,25), padx=(25, 2), side=ctk.TOP)
+            framePIPE = ctk.CTkFrame(self.window)
+            pipeLabel = ctk.CTkLabel(framePIPE, text="Training-Test/Fine Tuning/Inference Pipeline", anchor='nw', font=self.my_font)
+            pipeLabel.pack(padx=(0, 0), pady=(5, 0))
 
 
-        self.buttonTT = ctk.CTkButton(framePIPE, text="2. Training/Test", image=ctk.CTkImage(Image.open("assets/TT.png"), size=(60, 60)), command=self.run_pipeline_stage_jj3)
-        self.buttonTT.pack(side=ctk.LEFT)
+            if "TRAINTEST-Label_1" in self.cfg or "TRAINTEST-Label_0" in self.cfg or "FINETUNING-Label_0" in self.cfg or "FINETUNING-Label_1" in self.cfg or "VALIDATION-Label" in self.cfg:
+                self.buttonDATA = ctk.CTkButton(framePIPE, text="1. Data Filters", image=ctk.CTkImage(Image.open("assets/data.png"), size=(60, 60)), command = self.run_pipeline_stage_jj2)
+                self.buttonDATA.pack(side=ctk.LEFT, padx=(5, 0))
 
-        # Create a new frame for the button and textboxes
-        frameFT = ctk.CTkFrame(framePIPE)
-        frameFT.pack(side=ctk.LEFT, expand=True)
+            # Create a new frame for the button and textboxes
+            if "TRAINTEST" in self.cfg:
+                frameDF = ctk.CTkFrame(framePIPE)
+                frameDF.pack(side=ctk.LEFT, expand=True)
 
-        # Add the textboxes to the new frame
-        self.textboxTT_MOD = ctk.CTkButton(frameFT, height=textBoxHeight, text="Model", command=lambda: self.open_finder(
-                                               os.path.join("experiments", self.cfg["GENERAL"]["folder"],"1.DL_Training", "Model")))
-        self.textboxTT_MOD.pack(pady=(25, 2), padx=(5, 5), side=ctk.TOP)
+                self.textboxDATA_OUT = ctk.CTkButton(frameDF, height=textBoxHeight, text="TT/FT/FV Datasets", command=lambda: self.open_finder(os.path.join("experiments", self.cfg["GENERAL"]["folder"], "0.DataSet")))
+                self.textboxDATA_OUT.pack(pady=(25,2), padx=(2, 25), side=ctk.TOP)
 
-        self.textboxFT_DATA = ctk.CTkButton(frameFT, height=textBoxHeight, text="FT Dataset",command=lambda: self.open_finder(
-                                              os.path.join("experiments", self.cfg["GENERAL"]["folder"], "0.DataSet")))
-        self.textboxFT_DATA.pack(pady=(2, 25), padx=(5, 5), side=ctk.TOP)
-
-        self.buttonFT = ctk.CTkButton(framePIPE, text="3. Fine Tuning", image=ctk.CTkImage(Image.open("assets/FT.png"), size=(60, 60)), command=self.run_pipeline_stage_jj3ft)
-        self.buttonFT.pack(side=ctk.LEFT)
-
-        # Create a new frame for the button and textboxes
-        frameFV = ctk.CTkFrame(framePIPE)
-        frameFV.pack(side=ctk.LEFT, expand=True)
-
-        # Add the textboxes to the new frame
-        self.textboxFT_MOD = ctk.CTkButton(frameFV, height=textBoxHeight, text="Fine Tuned Model", command=lambda: self.open_finder(
-                                               os.path.join("experiments", self.cfg["GENERAL"]["folder"],"1.DL_Training", "Model")))
-        self.textboxFT_MOD.pack(pady=(25, 2), padx=(5, 5), side=ctk.TOP)
-
-        self.textboxFV_DATA = ctk.CTkButton(frameFV, height=textBoxHeight, text="FV Dataset",command=lambda: self.open_finder(
-                                              os.path.join("experiments", self.cfg["GENERAL"]["folder"], "0.DataSet")))
-        self.textboxFV_DATA.pack(pady=(2, 25), padx=(5, 5), side=ctk.TOP)
+                self.textboxTT_DATA = ctk.CTkButton(frameDF, height=textBoxHeight, text="TT Dataset", command=lambda: self.open_finder(os.path.join("experiments", self.cfg["GENERAL"]["folder"], "0.DataSet")))
+                self.textboxTT_DATA.pack(pady=(2,25), padx=(25, 2), side=ctk.TOP)
 
 
-        self.buttonFV = ctk.CTkButton(framePIPE, text="4. Inference", image=ctk.CTkImage(Image.open("assets/FV.png"), size=(60, 60)), command=self.run_pipeline_stage_jj4)
-        self.buttonFV.pack(side=ctk.LEFT, padx=(0, 5))
+                self.buttonTT = ctk.CTkButton(framePIPE, text="2. Training/Test", image=ctk.CTkImage(Image.open("assets/TT.png"), size=(60, 60)), command=self.run_pipeline_stage_jj3)
+                self.buttonTT.pack(side=ctk.LEFT)
 
-        frameOUT = ctk.CTkFrame(self.window)
-        frameOUT.pack(side=ctk.BOTTOM, pady=0, expand=True)
+            if "FINETUNING" in self.cfg or "TRAINTEST" in self.cfg:
+                # Create a new frame for the button and textboxes
+                frameFT = ctk.CTkFrame(framePIPE)
+                frameFT.pack(side=ctk.LEFT, expand=True)
 
-        self.textboxRESULTS = ctk.CTkButton(frameOUT, height=textBoxHeight, fg_color="white", text_color="black", text = "Results", command=lambda: self.open_finder(os.path.join("experiments", self.cfg["GENERAL"]["folder"],"results")))
-        self.textboxRESULTS.pack(pady=(5), padx=(5, 10), side=ctk.LEFT)
-        self.textboxLOGS = ctk.CTkButton(frameOUT, height=textBoxHeight, fg_color="white", text_color="black", text="Logs", command=lambda: self.open_finder(os.path.join("experiments", self.cfg["GENERAL"]["folder"],"logs")))
-        self.textboxLOGS.pack(pady=(5), padx=(10, 10), side=ctk.LEFT)
-        self.textboxVAL = ctk.CTkButton(frameOUT, height=textBoxHeight, fg_color="white", text_color="black", text="Inferences", command=lambda: self.open_finder(os.path.join("experiments", self.cfg["GENERAL"]["folder"],"inferences")))
-        self.textboxVAL.pack(pady=(5), padx=(10, 20), side=ctk.LEFT)
-        framePIPE.pack(expand=True, pady=(10, 0), ipadx=5, ipady=20)
+                if "TRAINTEST" in self.cfg:
+                    # Add the textboxes to the new frame
+                    self.textboxTT_MOD = ctk.CTkButton(frameFT, height=textBoxHeight, text="Model", command=lambda: self.open_finder(
+                                                       os.path.join("experiments", self.cfg["GENERAL"]["folder"],"1.DL_Training", "Model")))
+                    self.textboxTT_MOD.pack(pady=(25, 2), padx=(5, 5), side=ctk.TOP)
+
+                if "FINETUNING" in self.cfg:
+                    self.textboxFT_DATA = ctk.CTkButton(frameFT, height=textBoxHeight, text="FT Dataset",command=lambda: self.open_finder(
+                                                          os.path.join("experiments", self.cfg["GENERAL"]["folder"], "0.DataSet")))
+                    self.textboxFT_DATA.pack(pady=(2, 25), padx=(5, 5), side=ctk.TOP)
+
+                    self.buttonFT = ctk.CTkButton(framePIPE, text="3. Fine Tuning", image=ctk.CTkImage(Image.open("assets/FT.png"), size=(60, 60)), command=self.run_pipeline_stage_jj3ft)
+                    self.buttonFT.pack(side=ctk.LEFT)
+
+            if "VALIDATION" in self.cfg:
+                # Create a new frame for the button and textboxes
+                frameFV = ctk.CTkFrame(framePIPE)
+                frameFV.pack(side=ctk.LEFT, expand=True)
+
+                # Add the textboxes to the new frame
+                if "FINETUNING" in self.cfg:
+                    self.textboxFT_MOD = ctk.CTkButton(frameFV, height=textBoxHeight, text="Fine Tuned Model", command=lambda: self.open_finder(
+                                                           os.path.join("experiments", self.cfg["GENERAL"]["folder"],"1.DL_Training", "Model")))
+                else:
+                    self.textboxFT_MOD = ctk.CTkButton(frameFV, height=textBoxHeight, text="Model",
+                                                       command=lambda: self.open_finder(
+                                                           os.path.join("experiments", self.cfg["GENERAL"]["folder"],
+                                                                        "1.DL_Training", "Model")))
+                self.textboxFT_MOD.pack(pady=(25, 2), padx=(5, 5), side=ctk.TOP)
+
+                self.textboxFV_DATA = ctk.CTkButton(frameFV, height=textBoxHeight, text="FV Dataset",command=lambda: self.open_finder(
+                                                      os.path.join("experiments", self.cfg["GENERAL"]["folder"], "0.DataSet")))
+                self.textboxFV_DATA.pack(pady=(2, 25), padx=(5, 5), side=ctk.TOP)
+
+
+                self.buttonFV = ctk.CTkButton(framePIPE, text="4. Inference", image=ctk.CTkImage(Image.open("assets/FV.png"), size=(60, 60)), command=self.run_pipeline_stage_jj4)
+                self.buttonFV.pack(side=ctk.LEFT, padx=(0, 5))
+
+            frameOUT = ctk.CTkFrame(self.window)
+            frameOUT.pack(side=ctk.BOTTOM, pady=0, expand=True)
+
+            self.textboxRESULTS = ctk.CTkButton(frameOUT, height=textBoxHeight, fg_color="white", text_color="black", text = "Results", command=lambda: self.open_finder(os.path.join("experiments", self.cfg["GENERAL"]["folder"],"results")))
+            self.textboxRESULTS.pack(pady=(5), padx=(5, 10), side=ctk.LEFT)
+            self.textboxLOGS = ctk.CTkButton(frameOUT, height=textBoxHeight, fg_color="white", text_color="black", text="Logs", command=lambda: self.open_finder(os.path.join("experiments", self.cfg["GENERAL"]["folder"],"logs")))
+            self.textboxLOGS.pack(pady=(5), padx=(10, 10), side=ctk.LEFT)
+            self.textboxVAL = ctk.CTkButton(frameOUT, height=textBoxHeight, fg_color="white", text_color="black", text="Inferences", command=lambda: self.open_finder(os.path.join("experiments", self.cfg["GENERAL"]["folder"],"inferences")))
+            self.textboxVAL.pack(pady=(5), padx=(10, 20), side=ctk.LEFT)
+            framePIPE.pack(expand=True, pady=(10, 0), ipadx=5, ipady=20)
 
         self.checkIO()
 
-    '''
-    This method is called when the user clicks on the "Conf. exp." button. 
-    It opens a new window where the user can see and edit the configuration file.
-    '''
-    def read_configuration(self, filename):
-        cfg = {}
-        tmpCfg = self.read_config(self.cfg_filename)
-        for section in tmpCfg.sections():
-            cfg[section] = {}
-            for key in tmpCfg[section]:
-                try:
-                    cfg[section][key] = json.loads(tmpCfg[section][key])
-                except json.JSONDecodeError as e:
-                    cfg[section][key] = tmpCfg[section][key]
-        return cfg
 
     '''
     This method checks the existence of certain files and directories and updates 
@@ -158,15 +164,18 @@ class MainWindow:
     '''
     def checkIO(self):
 
+        self.labelTitle.configure(text=f"{self.cfg['GENERAL']['name']}\n{self.cfg['GENERAL']['type'].capitalize()} Experiment", font=self.my_font)
+
         #If there are files in the cfg["UNIPROT"]["go_folder"], the textbox will be green
-        if os.path.exists(os.path.join(self.cfg["UNIPROT"]["go_folder"], "downloads", self.cfg["UNIPROT"]["datasetname"] + ".dataset.csv")):
-            #textbox background green
-            self.textboxDATA_UP.configure(fg_color="green")
-            self.buttonEMB.configure(state=ctk.NORMAL)
-        else:
-            #textbox background red
-            self.textboxDATA_UP.configure(fg_color="red")
-            self.buttonEMB.configure(state=ctk.DISABLED)
+        if "UNIPROT" in self.cfg or "EMBEDDINGS" in self.cfg:
+            if "UNIPROT" in self.cfg and os.path.exists(os.path.join(self.cfg["UNIPROT"]["go_folder"], "downloads", self.cfg["UNIPROT"]["datasetname"] + ".dataset.csv")):
+                #textbox background green
+                self.textboxDATA_UP.configure(fg_color="green")
+                self.buttonEMB.configure(state=ctk.NORMAL)
+            else:
+                #textbox background red
+                self.textboxDATA_UP.configure(fg_color="red")
+                self.buttonEMB.configure(state=ctk.DISABLED)
 
         allOk = True
         count = 0
@@ -175,131 +184,150 @@ class MainWindow:
                 allOk = False
                 count += 1
 
-        if not allOk:
-            if count < len(self.cfg["GENERAL"]["originaldataset"]):
-                self.textboxDATA_IN.configure(fg_color="orange")
-                self.buttonDATA.configure(state=ctk.NORMAL)
+        if "EMBEDDINGS" in self.cfg:
+            if not allOk:
+                if count < len(self.cfg["GENERAL"]["originaldataset"]):
+                    self.textboxDATA_IN.configure(fg_color="orange")
+                else:
+                    self.textboxDATA_IN.configure(fg_color="red")
             else:
-                self.textboxDATA_IN.configure(fg_color="red")
-                self.buttonDATA.configure(state=ctk.DISABLED)
-        else:
-            #textbox background green
-            self.textboxDATA_IN.configure(fg_color="green")
-            self.buttonDATA.configure(state=ctk.NORMAL)
+                #textbox background green
+                self.textboxDATA_IN.configure(fg_color="green")
+
+        if "TRAINTEST-Label_1" in self.cfg or "TRAINTEST-Label_0" in self.cfg or "FINETUNING-Label_0" in self.cfg or "FINETUNING-Label_1" in self.cfg or "VALIDATION-Label" in self.cfg:
+            if not allOk:
+                if count < len(self.cfg["GENERAL"]["originaldataset"]):
+                    self.buttonDATA.configure(state=ctk.NORMAL)
+                else:
+                    self.buttonDATA.configure(state=ctk.DISABLED)
+            else:
+                #textbox background green
+                self.buttonDATA.configure(state=ctk.NORMAL)
+
 
         allOk = True
         datasetFolder = os.path.join("experiments", self.cfg["GENERAL"]["folder"], "0.DataSet")
-        if not os.path.exists(os.path.join(datasetFolder, "dataset_TT.csv")):
-            self.textboxTT_DATA.configure(fg_color="red")
-            self.buttonTT.configure(state=ctk.DISABLED)
-            allOk = False
-        else:
-            self.textboxTT_DATA.configure(fg_color="green")
-            self.buttonTT.configure(state=ctk.NORMAL)
+        if not os.path.exists(datasetFolder):
+            os.makedirs(datasetFolder)
 
-        if not os.path.exists(os.path.join(datasetFolder, "dataset_FT.csv")) and "FINETUNING" in self.cfg:
-            self.textboxFT_DATA.configure(fg_color="red")
-            self.buttonFT.configure(state=ctk.DISABLED)
-            allOk = False
-        else:
-            self.textboxFT_DATA.configure(fg_color="green")
-            self.buttonFT.configure(state=ctk.NORMAL)
+        if "TRAINTEST" in self.cfg:
+            if not os.path.exists(os.path.join(datasetFolder, "dataset_TT.csv")):
+                self.textboxTT_DATA.configure(fg_color="red")
+                self.buttonTT.configure(state=ctk.DISABLED)
+                allOk = False
+            else:
+                self.textboxTT_DATA.configure(fg_color="green")
+                self.buttonTT.configure(state=ctk.NORMAL)
 
-        if not os.path.exists(os.path.join(datasetFolder, "dataset_FV.csv")):
-            self.textboxFV_DATA.configure(fg_color="red")
-            self.buttonFV.configure(state=ctk.DISABLED)
-            allOk = False
-        else:
-            self.textboxFV_DATA.configure(fg_color="green")
-            self.buttonFV.configure(state=ctk.NORMAL)
+        if "FINETUNING" in self.cfg:
+            if not os.path.exists(os.path.join(datasetFolder, "dataset_FT.csv")):
+                self.textboxFT_DATA.configure(fg_color="red")
+                self.buttonFT.configure(state=ctk.DISABLED)
+                allOk = False
+            else:
+                self.textboxFT_DATA.configure(fg_color="green")
+                self.buttonFT.configure(state=ctk.NORMAL)
 
-        if not allOk:
-            #textbox background red
-            self.textboxDATA_OUT.configure(fg_color="red")
-        else:
-            #textbox background green
-            self.textboxDATA_OUT.configure(fg_color="green")
+        if "VALIDATION" in self.cfg:
+            if not os.path.exists(os.path.join(datasetFolder, "dataset_FV.csv")):
+                self.textboxFV_DATA.configure(fg_color="red")
+                self.buttonFV.configure(state=ctk.DISABLED)
+                allOk = False
+            else:
+                self.textboxFV_DATA.configure(fg_color="green")
+                self.buttonFV.configure(state=ctk.NORMAL)
+
+        if "TRAINTEST" in self.cfg:
+            if not allOk:
+                #textbox background red
+                self.textboxDATA_OUT.configure(fg_color="red")
+            else:
+                #textbox background green
+                self.textboxDATA_OUT.configure(fg_color="green")
 
         model_path = os.path.join("experiments", self.cfg["GENERAL"]["folder"], "1.DL_Training", "Model")
 
-        if self.cfg["GENERAL"]["type"] == "single":
-            totalModels = len(self.cfg["TRAINTEST"]["epoch"]) * len(self.cfg["TRAINTEST"]["learning_rate"]) * len(self.cfg["TRAINTEST"]["batch_size"])
-            availableModels = 0
-            for epochs, lr, batch in product(self.cfg["TRAINTEST"]["epoch"], self.cfg["TRAINTEST"]["learning_rate"], self.cfg["TRAINTEST"]["batch_size"]):
-                model_file = f'M_{self.cfg["GENERAL"]["acronym"]}_epochs_{epochs}_lr_{lr:.7f}_model_{self.cfg["TRAINTEST"]["model_name"]}_batch_{batch}_exclude_-1.pl'
-                if os.path.exists(os.path.join(model_path, model_file)):
-                    availableModels += 1
-        elif self.cfg["GENERAL"]["type"] == "leaveoneout":
-            totalModels = len(self.cfg["TRAINTEST"]["epoch"]) * len(self.cfg["TRAINTEST"]["learning_rate"]) * len(self.cfg["TRAINTEST"]["batch_size"]) * len(self.cfg["TRAINTEST"]["leaveoneoutspecies"])
-            availableModels = 0
-            for epochs, lr, batch, lOneOut in product(self.cfg["TRAINTEST"]["epoch"], self.cfg["TRAINTEST"]["learning_rate"], self.cfg["TRAINTEST"]["batch_size"], range(len(self.cfg["TRAINTEST"]["leaveoneoutspecies"]))):
-                model_file = f'M_{self.cfg["GENERAL"]["acronym"]}_epochs_{epochs}_lr_{lr:.7f}_model_{self.cfg["TRAINTEST"]["model_name"]}_batch_{batch}_exclude_{lOneOut}.pl'
-                if os.path.exists(os.path.join(model_path, model_file)):
-                    availableModels += 1
-
-        if availableModels == totalModels:
-            #textbox background red
-            self.textboxTT_MOD.configure(fg_color="green")
-            self.buttonFT.configure(state=ctk.NORMAL)
-        elif availableModels == 0:
-            #textbox background red
-            self.textboxTT_MOD.configure(fg_color="red")
-            self.buttonFT.configure(state=ctk.DISABLED)
-        else:
-            #textbox background orange
-            self.textboxTT_MOD.configure(fg_color="orange")
-            self.buttonFT.configure(state=ctk.NORMAL)
-
-        #Checking output FT models
-        model_names = []
-        model_strings = []
-        if self.cfg["GENERAL"]["type"] == "single":
-            inputModelsCount = len(self.cfg["TRAINTEST"]["epoch"]) * len(self.cfg["TRAINTEST"]["learning_rate"]) * len(self.cfg["TRAINTEST"]["batch_size"])
-            totalModels = len(self.cfg["FINETUNING"]["epoch"]) * len(self.cfg["FINETUNING"]["learning_rate"]) * len(self.cfg["FINETUNING"]["batch_size"]) * inputModelsCount
-            # Input model names
-            for EPOCHS, LR, BATCH in product(self.cfg["TRAINTEST"]["epoch"], self.cfg["TRAINTEST"]["learning_rate"],
-                                             self.cfg["TRAINTEST"]["batch_size"]):
-                model_names.append(f'M_{self.cfg["GENERAL"]["acronym"]}_epochs_{EPOCHS}_lr_{LR:.7f}_model_{self.cfg["TRAINTEST"]["model_name"]}_batch_{BATCH}_exclude_-1.pl')
-                model_strings.append(f'{self.cfg["GENERAL"]["acronym"]}-{EPOCHS}-{LR:.7f}-{self.cfg["TRAINTEST"]["model_name"]}-{BATCH}')
-
-            availableModels = 0
-            for EPOCHS, LR, BATCH, MODEL in product(self.cfg["FINETUNING"]["epoch"],
-                                                    self.cfg["FINETUNING"]["learning_rate"],
-                                                    self.cfg["FINETUNING"]["batch_size"], range(len(model_names))):
-                model_file = f'M_FT_origin_{model_strings[MODEL]}_epochs_{EPOCHS}_lr_{LR:.7f}_model_{self.cfg["TRAINTEST"]["model_name"]}_batch_{BATCH}_exclude_-1.pl'
-                if os.path.exists(os.path.join(model_path, model_file)):
-                    availableModels += 1
-
-        elif self.cfg["GENERAL"]["type"] == "leaveoneout":
-            totalModels = len(self.cfg["FINETUNING"]["epoch"]) * len(self.cfg["FINETUNING"]["learning_rate"]) * len(self.cfg["FINETUNING"]["batch_size"]) * len(self.cfg["TRAINTEST"]["leaveoneoutspecies"])
-            # Input model names
-            for EPOCHS, LR, BATCH, L1O in product(self.cfg["TRAINTEST"]["epoch"], self.cfg["TRAINTEST"]["learning_rate"],
-                                                  self.cfg["TRAINTEST"]["batch_size"],
-                                                  range(len(self.cfg["TRAINTEST"]["leaveoneoutspecies"]))):
-                model_names.append(f'M_{self.cfg["GENERAL"]["acronym"]}_epochs_{EPOCHS}_lr_{LR:.7f}_model_{self.cfg["TRAINTEST"]["model_name"]}_batch_{BATCH}_exclude_{L1O}.pl')
-                model_strings.append(f'{self.cfg["GENERAL"]["acronym"]}-{EPOCHS}-{LR:.7f}-{self.cfg["TRAINTEST"]["model_name"]}-{BATCH}-{L1O}')
-
-            availableModels = 0
-            for EPOCHS, LR, BATCH, MODEL in product(self.cfg["FINETUNING"]["epoch"],
-                                                    self.cfg["FINETUNING"]["learning_rate"],
-                                                    self.cfg["FINETUNING"]["batch_size"], range(len(model_names))):
-                for idx, speciesGroup in enumerate(self.cfg["TRAINTEST"]["leaveoneoutspecies"]):
-                    model_file = f'M_FT_origin_{model_strings[MODEL]}_epochs_{EPOCHS}_lr_{LR:.7f}_model_{self.cfg["TRAINTEST"]["model_name"]}_batch_{BATCH}_exclude_{idx}.pl'
+        if "TRAINTEST" in self.cfg:
+            if self.cfg["GENERAL"]["type"] == "single":
+                totalModels = len(self.cfg["TRAINTEST"]["epoch"]) * len(self.cfg["TRAINTEST"]["learning_rate"]) * len(self.cfg["TRAINTEST"]["batch_size"])
+                availableModels = 0
+                for epochs, lr, batch in product(self.cfg["TRAINTEST"]["epoch"], self.cfg["TRAINTEST"]["learning_rate"], self.cfg["TRAINTEST"]["batch_size"]):
+                    model_file = f'M_{self.cfg["GENERAL"]["acronym"]}_epochs_{epochs}_lr_{lr:.7f}_model_{self.cfg["TRAINTEST"]["model_name"]}_batch_{batch}_exclude_-1.pl'
+                    if os.path.exists(os.path.join(model_path, model_file)):
+                        availableModels += 1
+            elif self.cfg["GENERAL"]["type"] == "leaveoneout":
+                totalModels = len(self.cfg["TRAINTEST"]["epoch"]) * len(self.cfg["TRAINTEST"]["learning_rate"]) * len(self.cfg["TRAINTEST"]["batch_size"]) * len(self.cfg["TRAINTEST"]["leaveoneoutspecies"])
+                availableModels = 0
+                for epochs, lr, batch, lOneOut in product(self.cfg["TRAINTEST"]["epoch"], self.cfg["TRAINTEST"]["learning_rate"], self.cfg["TRAINTEST"]["batch_size"], range(len(self.cfg["TRAINTEST"]["leaveoneoutspecies"]))):
+                    model_file = f'M_{self.cfg["GENERAL"]["acronym"]}_epochs_{epochs}_lr_{lr:.7f}_model_{self.cfg["TRAINTEST"]["model_name"]}_batch_{batch}_exclude_{lOneOut}.pl'
                     if os.path.exists(os.path.join(model_path, model_file)):
                         availableModels += 1
 
-        if availableModels == totalModels:
-            #textbox background red
-            self.textboxFT_MOD.configure(fg_color="green")
-            self.buttonFV.configure(state=ctk.NORMAL)
-        elif availableModels == 0:
-            #textbox background red
-            self.textboxFT_MOD.configure(fg_color="red")
-            self.buttonFV.configure(state=ctk.DISABLED)
-        else:
-            #textbox background orange
-            self.textboxFT_MOD.configure(fg_color="orange")
-            self.buttonFV.configure(state=ctk.NORMAL)
+            if "FINETUNING" in self.cfg:
+                if availableModels == totalModels:
+                    #textbox background red
+                    self.textboxTT_MOD.configure(fg_color="green")
+                    self.buttonFT.configure(state=ctk.NORMAL)
+                elif availableModels == 0:
+                    #textbox background red
+                    self.textboxTT_MOD.configure(fg_color="red")
+                    self.buttonFT.configure(state=ctk.DISABLED)
+                else:
+                    #textbox background orange
+                    self.textboxTT_MOD.configure(fg_color="orange")
+                    self.buttonFT.configure(state=ctk.NORMAL)
+
+        if "FINETUNING" in self.cfg and "TRAINTEST" in self.cfg:
+            #Checking output FT models
+            model_names = []
+            model_strings = []
+            if self.cfg["GENERAL"]["type"] == "single":
+                inputModelsCount = len(self.cfg["TRAINTEST"]["epoch"]) * len(self.cfg["TRAINTEST"]["learning_rate"]) * len(self.cfg["TRAINTEST"]["batch_size"])
+                totalModels = len(self.cfg["FINETUNING"]["epoch"]) * len(self.cfg["FINETUNING"]["learning_rate"]) * len(self.cfg["FINETUNING"]["batch_size"]) * inputModelsCount
+                # Input model names
+                for EPOCHS, LR, BATCH in product(self.cfg["TRAINTEST"]["epoch"], self.cfg["TRAINTEST"]["learning_rate"],
+                                                 self.cfg["TRAINTEST"]["batch_size"]):
+                    model_names.append(f'M_{self.cfg["GENERAL"]["acronym"]}_epochs_{EPOCHS}_lr_{LR:.7f}_model_{self.cfg["TRAINTEST"]["model_name"]}_batch_{BATCH}_exclude_-1.pl')
+                    model_strings.append(f'{self.cfg["GENERAL"]["acronym"]}-{EPOCHS}-{LR:.7f}-{self.cfg["TRAINTEST"]["model_name"]}-{BATCH}')
+
+                availableModels = 0
+                for EPOCHS, LR, BATCH, MODEL in product(self.cfg["FINETUNING"]["epoch"],
+                                                        self.cfg["FINETUNING"]["learning_rate"],
+                                                        self.cfg["FINETUNING"]["batch_size"], range(len(model_names))):
+                    model_file = f'M_FT_origin_{model_strings[MODEL]}_epochs_{EPOCHS}_lr_{LR:.7f}_model_{self.cfg["TRAINTEST"]["model_name"]}_batch_{BATCH}_exclude_-1.pl'
+                    if os.path.exists(os.path.join(model_path, model_file)):
+                        availableModels += 1
+
+            elif self.cfg["GENERAL"]["type"] == "leaveoneout":
+                totalModels = len(self.cfg["FINETUNING"]["epoch"]) * len(self.cfg["FINETUNING"]["learning_rate"]) * len(self.cfg["FINETUNING"]["batch_size"]) * len(self.cfg["TRAINTEST"]["leaveoneoutspecies"])
+                # Input model names
+                for EPOCHS, LR, BATCH, L1O in product(self.cfg["TRAINTEST"]["epoch"], self.cfg["TRAINTEST"]["learning_rate"],
+                                                      self.cfg["TRAINTEST"]["batch_size"],
+                                                      range(len(self.cfg["TRAINTEST"]["leaveoneoutspecies"]))):
+                    model_names.append(f'M_{self.cfg["GENERAL"]["acronym"]}_epochs_{EPOCHS}_lr_{LR:.7f}_model_{self.cfg["TRAINTEST"]["model_name"]}_batch_{BATCH}_exclude_{L1O}.pl')
+                    model_strings.append(f'{self.cfg["GENERAL"]["acronym"]}-{EPOCHS}-{LR:.7f}-{self.cfg["TRAINTEST"]["model_name"]}-{BATCH}-exclude-{L1O}')
+
+                availableModels = 0
+                for EPOCHS, LR, BATCH, MODEL in product(self.cfg["FINETUNING"]["epoch"],
+                                                        self.cfg["FINETUNING"]["learning_rate"],
+                                                        self.cfg["FINETUNING"]["batch_size"], range(len(model_names))):
+                    for idx, speciesGroup in enumerate(self.cfg["TRAINTEST"]["leaveoneoutspecies"]):
+                        model_file = f'M_FT_origin_{model_strings[MODEL]}_epochs_{EPOCHS}_lr_{LR:.7f}_model_{self.cfg["TRAINTEST"]["model_name"]}_batch_{BATCH}_exclude_{idx}.pl'
+                        if os.path.exists(os.path.join(model_path, model_file)):
+                            availableModels += 1
+
+                if availableModels == totalModels:
+                    #textbox background red
+                    self.textboxFT_MOD.configure(fg_color="green")
+                    self.buttonFV.configure(state=ctk.NORMAL)
+                elif availableModels == 0:
+                    #textbox background red
+                    self.textboxFT_MOD.configure(fg_color="red")
+                    self.buttonFV.configure(state=ctk.DISABLED)
+                else:
+                    #textbox background orange
+                    self.textboxFT_MOD.configure(fg_color="orange")
+                    self.buttonFV.configure(state=ctk.NORMAL)
 
     '''
     This method reads the configuration file and returns a dictionary with 
@@ -360,7 +388,7 @@ class MainWindow:
         self.cfg["tmp"]["createFV"] = jj2_prepareInputFiles.askForGenerateFile(os.path.join(pre_input_prc_folder_out, "dataset_FV.csv"), self.cfg["VALIDATION"]["createflag"])  if "VALIDATION" in self.cfg else True
 
         #get the color of self.textboxFT_MOD
-        if self.cfg["TRAINTEST"]["trainflag"] == "ask" and self.textboxFT_MOD.cget("fg_color") != "red":
+        if "TRAINTEST" in self.cfg and self.cfg["TRAINTEST"]["trainflag"] == "ask" and self.textboxTT_MOD.cget("fg_color") != "red":
             answer = messagebox.askyesno("Warning", f"Some of the output models are already present. Do you want to retrain them?", icon='warning')
             if answer == True:
                 self.cfg["TRAINTEST"]["trainflag"] = "yes"
@@ -368,7 +396,7 @@ class MainWindow:
                 self.cfg["TRAINTEST"]["trainflag"] = "no"
 
         #get the color of self.textboxFT_MOD
-        if self.cfg["FINETUNING"]["trainflag"] == "ask" and self.textboxFT_MOD.cget("fg_color") != "red":
+        if "FINETUNING" in self.cfg and self.cfg["FINETUNING"]["trainflag"] == "ask" and self.textboxFT_MOD.cget("fg_color") != "red":
             answer = messagebox.askyesno("Warning", f"Some of the output Fine Tuned models are already present. Do you want to retrain them?", icon='warning')
             if answer == True:
                 self.cfg["FINETUNING"]["trainflag"] = "yes"
@@ -376,6 +404,10 @@ class MainWindow:
                 self.cfg["FINETUNING"]["trainflag"] = "no"
 
         #If it exists at least one file whose name starts with inference in the inferences folder...
+        #If the inference folder does not exists, create it
+        if not os.path.exists(os.path.join("experiments", self.cfg["GENERAL"]["folder"], "inferences")):
+            os.makedirs(os.path.join("experiments", self.cfg["GENERAL"]["folder"], "inferences"))
+
         if len([f for f in os.listdir(os.path.join("experiments", self.cfg["GENERAL"]["folder"], "inferences")) if f.startswith("inference")]) > 0:
             answer = messagebox.askyesno("Warning", f"Some of the output inferences seem to be already present. Do you want to recompute them?", icon='warning')
             if answer == True:
@@ -395,10 +427,11 @@ class MainWindow:
         thread2 = my_class.start_thread(thread_jj3, semaphore)
         #thread2.join()  # Wait for the thread to finish
 
-        # Now I want to launch another process, when the previous one is finished
-        my_class = myProcess("Fine Tuning", self.cfg)
-        thread3 = my_class.start_thread(thread_jj3ft, semaphore)
-        #thread3.join()  # Wait for the thread to finish
+        if "FINETUNING" in self.cfg:
+            # Now I want to launch another process, when the previous one is finished
+            my_class = myProcess("Fine Tuning", self.cfg)
+            thread3 = my_class.start_thread(thread_jj3ft, semaphore)
+            #thread3.join()  # Wait for the thread to finish
 
         # Now I want to launch another process, when the previous one is finished
         my_class = myProcess("Inference", self.cfg)
@@ -455,8 +488,8 @@ class MainWindow:
 
     def run_pipeline_stage_jj3(self):
 
-        #get the color of self.textboxFT_MOD
-        if self.cfg["TRAINTEST"]["trainflag"] == "ask" and self.textboxFT_MOD.cget("fg_color") != "red":
+        #get the color of self.textboxTT_MOD
+        if self.cfg["TRAINTEST"]["trainflag"] == "ask" and self.textboxTT_MOD.cget("fg_color") != "red":
             answer = messagebox.askyesno("Warning", f"Some of the output models are already present. Do you want to retrain them?", icon='warning')
             if answer == True:
                 self.cfg["TRAINTEST"]["trainflag"] = "yes"
@@ -502,104 +535,12 @@ class MainWindow:
     This method starts the main loop of the application.
     '''
     def run(self):
+        self.window.update()
         self.window.mainloop()
 
-    '''
-    This function is called when the user clicks the "Settings" button
-    It opens a new window with input fields for each configuration option
-    The user can modify the values and save the changes
-    '''
     def open_cfg_window(self):
-        # Create a new window
-        self.cfg_window = ctk.CTk()
-        self.cfg_window.geometry("500x800")
+        self.cfg_window = ConfigWindow(self, self.cfg_filename, self.my_font)
 
-        # Create a scrolled frame
-        scrolled_frame = ctk.CTkScrollableFrame(self.cfg_window)
-        scrolled_frame.pack(fill=ctk.BOTH, expand=True)
-
-        # Create input fields for each configuration option
-        self.cfg_entries = {}
-        tmpCfg = self.read_config(self.cfg_filename)
-
-        row = 0
-        for section in tmpCfg.sections():
-            frame = ctk.CTkFrame(master=scrolled_frame, fg_color="lightblue")
-            frame.grid(row=row, column=0, columnspan = 3, pady=10, padx=10, ipady=5, sticky="nsew")
-            label = ctk.CTkLabel(frame, text=f"{section}", anchor='w', font=self.my_font)
-            label.grid(row=row, column=0, columnspan = 3, pady=5, padx=5, sticky='w')
-            row += 1
-
-            for key in tmpCfg[section]:
-                # Create an entry for the configuration option
-                label = ctk.CTkLabel(frame, text=f"{key}", anchor='w')
-                label.grid(row=row, column=0, sticky='w', padx=5)
-                entry = ctk.CTkEntry(frame)
-                entry.insert(0, tmpCfg[section][key])
-                entry.grid(row=row, column=1, padx=5)
-
-                # Add the entry to the dictionary of entries
-                self.cfg_entries[(section, key)] = entry
-
-                # Create a tooltip for the entry
-                tooltip = CTkToolTip(entry, message = tooltips.get(key, 'No explanation available'))
-                row += 1
-
-        # Create a frame for the buttons
-        button_frame = ctk.CTkFrame(self.cfg_window, height=50, fg_color="white")
-        button_frame.pack(expand=False, pady=0)
-
-        # Create a save button
-        save_button = ctk.CTkButton(button_frame, text="Save", command=lambda: self.save_cfg(tmpCfg))
-        save_button.pack(side=ctk.LEFT, pady=5, padx=(5,2), anchor='center')
-
-        # Create a "Save As" button
-        save_as_button = ctk.CTkButton(button_frame, text="Save As", command=self.save_cfg_as)
-        save_as_button.pack(side=ctk.LEFT, pady=5, padx=(2,5), anchor='center')
-
-        self.cfg_window.mainloop()
-
-    '''
-    This method is called when the user clicks on the "Save" button in the configuration window.
-    '''
-    def save_cfg(self, cfg):
-        # Update the configuration with the new values from the input fields
-        for (section, key), entry in self.cfg_entries.items():
-            cfg[section][key] = entry.get()
-
-        # Save the configuration to the file
-        config = configparser.ConfigParser()
-        config.read_dict(cfg)
-        with open(self.cfg_filename, 'w') as f:
-            config.write(f)
-
-        self.cfg = self.read_configuration(self.cfg_filename)
-        self.checkIO()
-
-        # Close the configuration window
-        self.cfg_window.destroy()
-
-    '''
-    This method is called when the user clicks on the "Save As" button in the configuration window.
-    It opens a file dialog to select the new filename and saves the configuration to the new file.
-    '''
-    def save_cfg_as(self):
-        # Open a file dialog to select the new filename
-        new_filename = ctk.filedialog.asksaveasfilename(defaultextension=".ini",
-                                                        filetypes=(("INI files", "*.ini"), ("All files", "*.*")))
-
-        # If a filename was selected
-        if new_filename:
-            # Update the configuration with the new values from the input fields
-            config = configparser.ConfigParser()
-            for (section, key), entry in self.cfg_entries.items():
-                if not config.has_section(section):
-                    config.add_section(section)
-                config.set(section, key, entry.get())
-
-            # Save the configuration to the new file
-            with open(new_filename, 'w') as f:
-                config.write(f)
 
     '''
     This method is called when the user clicks on the "Open" button.

@@ -64,7 +64,7 @@ def analyze_and_plot_validation_results(file_path):
     if len(metrics_df) == 0:
         #draw and save a violin plot with the distribution of probabilities for Column '1' for all Species (not separated)
         fig, ax = plt.subplots()
-        ax = sns.violinplot(x='Species', y='1', data=df, ax=ax, inner=None)
+        ax = sns.violinplot(x='Species', y='1', data=df, ax=ax, inner=None, scale="area")
         #add scatter
         sns.stripplot(x="Species", y='1', data=df, ax=ax, color='0.3', jitter=0.3, size=2.5)
 
@@ -102,7 +102,7 @@ def analyze_and_plot_validation_results(file_path):
             if df_label['Species'].empty or not (df_label.groupby('Species').filter(lambda x: len(x) == 0).empty):
                 continue
 
-            ax = sns.violinplot(x="Species", y='1', data=df_label, ax=axs[i], inner=None)
+            ax = sns.violinplot(x="Species", y='1', data=df_label, ax=axs[i], inner=None, scale="area")
             sns.stripplot(x="Species", y='1', data=df_label, ax=axs[i], color='0.3', jitter=0.3, size=2.5)
             ax.axhline(0.5, color='red', linestyle='--')  # Add horizontal line at 0.5
             for j in range(len(species)):
@@ -132,7 +132,7 @@ def analyze_and_plot_validation_results(file_path):
         # Ensure the total height is within the figure (0 to 1)
         total_height = min(1, max(0, total_height))
 
-        table = axs[3].table(cellText=table_data, rowLabels=table_rows, colLabels=table_columns, loc='center', colWidths=[0.1, 0.1, 0.1, 0.1], cellLoc='center', cellColours=None, bbox=[0, -1.8, 1, total_height])
+        table = axs[3].table(cellText=table_data, rowLabels=table_rows, colLabels=table_columns, loc='center', colWidths=[0.1, 0.1, 0.1, 0.1], cellLoc='center', cellColours=None, bbox=[0.2, -1.8, 0.6, total_height])
 
         table.auto_set_font_size(False)
         table.set_fontsize(12)

@@ -59,8 +59,8 @@ def DL_train(cfg, EPOCHS, LR, BATCH_SIZE, logger = "", load_model_dir = "", inpu
         os.makedirs(model_dir_path)
 
     if load_model_dir == "":
-        logits_output = os.path.join(model_dir_path, f'M_{cfg["GENERAL"]["acronym"]}_epochs_{EPOCHS}_lr_{LR:.7f}_model_{cfg["TRAINTEST"]["model_name"]}_batch_{BATCH_SIZE}_exclude_{excludeSpeciesGroup}_logits.csv')
-        model_filename = f'M_{cfg["GENERAL"]["acronym"]}_epochs_{EPOCHS}_lr_{LR:.7f}_model_{cfg["TRAINTEST"]["model_name"]}_batch_{BATCH_SIZE}_exclude_{excludeSpeciesGroup}.pl'
+        logits_output = os.path.join(model_dir_path, f'M_TT_{cfg["GENERAL"]["acronym"]}_epochs_{EPOCHS}_lr_{LR:.7f}_model_{cfg["TRAINTEST"]["model_name"]}_batch_{BATCH_SIZE}_exclude_{excludeSpeciesGroup}_logits.csv')
+        model_filename = f'M_TT_{cfg["GENERAL"]["acronym"]}_epochs_{EPOCHS}_lr_{LR:.7f}_model_{cfg["TRAINTEST"]["model_name"]}_batch_{BATCH_SIZE}_exclude_{excludeSpeciesGroup}.pl'
         model_loc = os.path.join(model_dir_path, model_filename)
     else:
         logits_output = os.path.join(model_dir_path, f'M_FT_origin_{input_modelstring}_epochs_{EPOCHS}_lr_{LR:.7f}_model_{cfg["TRAINTEST"]["model_name"]}_batch_{BATCH_SIZE}_exclude_{excludeSpeciesGroup}_logits.csv')
@@ -79,7 +79,7 @@ def DL_train(cfg, EPOCHS, LR, BATCH_SIZE, logger = "", load_model_dir = "", inpu
     if excludeSpeciesGroup >= 0:
         jj_all_data = jj_all_data[~jj_all_data['Species'].isin(cfg["TRAINTEST"]["leaveoneoutspecies"][excludeSpeciesGroup])]
         logger.log_message("*" * 80)
-        logger.log_message (f"Leave-One-Out Species: {excludeSpeciesGroup}")
+        logger.log_message (f"Leave-One-Out Species: {excludeSpeciesGroup} ({cfg['TRAINTEST']['leaveoneoutspecies'][excludeSpeciesGroup]})")
 
     logger.log_message (f"Total number of Label 1 in the Test/Train dataset: {len(jj_all_data[jj_all_data['Label'] == 1])}")
     logger.log_message (f"Total number of Label 0 in the Test/Train dataset: {len(jj_all_data[jj_all_data['Label'] == 0])}")

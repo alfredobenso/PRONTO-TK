@@ -171,6 +171,9 @@ def downloadUPProteins(cfg=None, logger=None):
         df["Label"].fillna((1 if label == "YES" else 0), inplace=True)
         logger.log_message(f'Label set to {(1 if label == "YES" else 0)}')
 
+        #if cfg["UNIPROT"]["go_folder"], "downloads" does not exist, create it
+        if not os.path.exists(os.path.join(cfg["UNIPROT"]["go_folder"], "downloads")):
+            os.makedirs(os.path.join(cfg["UNIPROT"]["go_folder"], "downloads"))
         df.to_csv(os.path.join(cfg["UNIPROT"]["go_folder"], "downloads", nomefile), index=False, sep='\t')
 
         loopCount += 1
@@ -197,16 +200,15 @@ def downloadUPProteins(cfg=None, logger=None):
       df = pd.read_csv(os.path.join(cfg["UNIPROT"]["go_folder"], "downloads", file), sep='\t')
       jjDF = pd.concat([jjDF, df], ignore_index=True)
 
-  duplicated_entries = jjDF[jjDF.duplicated('Entry', keep=False)]['Entry']
-  duplicates = duplicated_entries.tolist()
-  #remove from jjDF all the duplicated entries that have Annotaion = "automatic"
-  jjDF = jjDF[~((jjDF['Entry'].isin(duplicates)) & (jjDF['Annotation'] == "automatic"))]
-  logger.log_message(f"Removed {len(duplicates)} duplicated entries from the dataset")
+  # Sort the DataFrame so that 'manual' comes before 'automatic'
+  jjDF = jjDF.sort_values('Annotation', ascending=False)
 
-    #Make column Label of type int
+  # Now drop duplicates based on 'Entry', keeping the first occurrence (which will be 'manual' if it exists)
+  jjDF = jjDF.drop_duplicates(subset='Entry', keep='first')
+
+  #Make column Label of type int
   jjDF.to_csv(os.path.join(cfg["UNIPROT"]["go_folder"], "downloads", cfg["UNIPROT"]["datasetname"] + ".dataset.csv"), index=False, header=True)
   logger.log_message(f"Final dataset saved to {os.path.join(cfg['UNIPROT']['go_folder'], 'downloads', cfg['UNIPROT']['datasetname'] + '.dataset.csv')}")
-
 
 if __name__ == "__main__":
   df = downloadUPProteins()

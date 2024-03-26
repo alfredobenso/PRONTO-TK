@@ -20,7 +20,7 @@ def labelConfig(cfg, label):
 '''
 This function is used to filter a dataframe based on the configuration file
 '''
-def applyFilters2DF(df, filters, logger):
+def applyFilters2DF(df, filters, logger, skipbalance = False):
     if len(filters) == 0:
         return df
     #First I manage the Species
@@ -38,18 +38,19 @@ def applyFilters2DF(df, filters, logger):
         elif filters["Label"]["reviewed"] != "":
             df = df[df['Reviewed'].isin(filters["Label"]["reviewed"])]
     else:
-        if filters["Label_0"]["annotation"] != "" and filters["Label_0"]["reviewed"] != "" and filters["Label_1"]["annotation"] != "" and filters["Label_1"]["reviewed"] != "":
-            df = df[((df['Annotation'].isin(filters["Label_0"]["annotation"])) & (df['Label'] == 0) & (df['Reviewed'].isin(filters["Label_0"]["reviewed"]))) | ((df['Annotation'].isin(filters["Label_1"]["annotation"])) & (df['Label'] == 1) & (df['Reviewed'].isin(filters["Label_1"]["reviewed"])))]
-        elif filters["Label_0"]["annotation"] != "" and filters["Label_0"]["reviewed"] != "" and filters["Label_1"]["annotation"] != "":
-            df = df[((df['Annotation'].isin(filters["Label_0"]["annotation"])) & (df['Label'] == 0) & (df['Reviewed'].isin(filters["Label_0"]["reviewed"]))) | ((df['Annotation'].isin(filters["Label_1"]["annotation"]) & (df['Label'] == 1)))]
-        elif filters["Label_0"]["annotation"] != "" and filters["Label_0"]["reviewed"] != "" and filters["Label_1"]["reviewed"] != "":
-            df = df[(((df['Annotation'].isin(filters["Label_0"]["annotation"])) & (df['Label'] == 0) & (df['Reviewed'].isin(filters["Label_0"]["reviewed"]))) | (df['Label'] == 1 & df['Reviewed'].isin(filters["Label_1"]["reviewed"])))]
-        elif filters["Label_0"]["annotation"] != "" and filters["Label_1"]["annotation"] != "" and filters["Label_1"]["reviewed"] != "":
-            df = df[((df['Annotation'].isin(filters["Label_0"]["annotation"])) & (df['Label'] == 0)) | (df['Annotation'].isin(filters["Label_1"]["annotation"]) & ((df['Label'] == 1) & (df['Reviewed'].isin(filters["Label_1"]["reviewed"]))))]
-        elif filters["Label_0"]["reviewed"] != "" and filters["Label_1"]["annotation"] != "" and filters["Label_1"]["reviewed"] != "":
-            df = df[((df['Reviewed'].isin(filters["Label_0"]["reviewed"])) & (df['Label'] == 0)) | ((df['Annotation'].isin(filters["Label_1"]["annotation"]) & df['Label'] == 1 & df['Reviewed'].isin(filters["Label_1"]["reviewed"])))]
 
-    if "balanced" in filters["_01ratio"]:
+        if filters["Label_0"]["annotation"] != "" and filters["Label_0"]["reviewed"] != "" and filters["Label_1"]["annotation"] != "" and filters["Label_1"]["reviewed"] != "":
+            df = df[(((df['Annotation'].isin(filters["Label_0"]["annotation"])) | ("go" in filters["Label_0"]["annotation"])) & (df['Label'] == 0) & (df['Reviewed'].isin(filters["Label_0"]["reviewed"]))) | (((df['Annotation'].isin(filters["Label_1"]["annotation"])) | (filters["Label_1"]["annotation"] == "go")) & (df['Label'] == 1) & (df['Reviewed'].isin(filters["Label_1"]["reviewed"])))]
+        elif filters["Label_0"]["annotation"] != "" and filters["Label_0"]["reviewed"] != "" and filters["Label_1"]["annotation"] != "":
+            df = df[(((df['Annotation'].isin(filters["Label_0"]["annotation"])) | ("go" in filters["Label_0"]["annotation"])) & (df['Label'] == 0) & (df['Reviewed'].isin(filters["Label_0"]["reviewed"]))) | (((df['Annotation'].isin(filters["Label_1"]["annotation"])) | (filters["Label_1"]["annotation"] == "go")) & df['Label'] == 1)]
+        elif filters["Label_0"]["annotation"] != "" and filters["Label_0"]["reviewed"] != "" and filters["Label_1"]["reviewed"] != "":
+            df = df[((((df['Annotation'].isin(filters["Label_0"]["annotation"])) | ("go" in filters["Label_0"]["annotation"])) & (df['Label'] == 0) & (df['Reviewed'].isin(filters["Label_0"]["reviewed"]))) | (df['Label'] == 1 & df['Reviewed'].isin(filters["Label_1"]["reviewed"])))]
+        elif filters["Label_0"]["annotation"] != "" and filters["Label_1"]["annotation"] != "" and filters["Label_1"]["reviewed"] != "":
+            df = df[(((df['Annotation'].isin(filters["Label_0"]["annotation"])) | ("go" in filters["Label_0"]["annotation"])) & (df['Label'] == 0)) | (((df['Annotation'].isin(filters["Label_1"]["annotation"])) | ("go" in filters["Label_1"]["annotation"])) & ((df['Label'] == 1) & (df['Reviewed'].isin(filters["Label_1"]["reviewed"]))))]
+        elif filters["Label_0"]["reviewed"] != "" and filters["Label_1"]["annotation"] != "" and filters["Label_1"]["reviewed"] != "":
+            df = df[((df['Reviewed'].isin(filters["Label_0"]["reviewed"])) & (df['Label'] == 0)) | (((df['Annotation'].isin(filters["Label_1"]["annotation"])) | ("go" in filters["Label_1"]["annotation"])) & df['Label'] == 1 & df['Reviewed'].isin(filters["Label_1"]["reviewed"]))]
+
+    if "balanced" in filters["_01ratio"] and not skipbalance:
         logger.log_message ("Balancing the labels....")
         #For each Species, make sure that the number of rows with Label = 1 is the same as the number of rows with Label = 0
         #I need to get the number of rows with Label = 1 and Label = 0 for each species
@@ -92,6 +93,31 @@ def askForGenerateFile(path, flag = False):
         return answer
     else:
         return True
+
+def get_combinations_from_config(cfg, label, df):
+    # Extract the species, annotation, and reviewed for the given label from the configuration
+    if cfg[label]["includedspecies"] != "":
+        species = cfg[label]["includedspecies"]
+    else:
+        species = df["Species"].unique()
+    species = set(species) - set(cfg[label]["excludedspecies"])
+
+    annotation = cfg[label + "-Label_1"]["annotation"]
+    reviewed = cfg[label + "-Label_1"]["reviewed"]
+
+    # Create a list of tuples where each tuple is a combination of species, annotation, and reviewed
+    combinations = [(s, a, r) for s in species for a in annotation for r in reviewed]
+
+    return combinations
+
+def find_common_combinations(cfg, df):
+    # Get the combinations for Training and Fine Tuning
+    training_combinations = get_combinations_from_config(cfg, "TRAINTEST", df)
+    fine_tuning_combinations = get_combinations_from_config(cfg, "FINETUNING", df)
+    # Find the common combinations
+    common_combinations = set(training_combinations) & set(fine_tuning_combinations)
+    return common_combinations
+
 
 '''
 This function creates three datasets: Train/Test, FineTuning, and Final Validation
@@ -137,40 +163,70 @@ def filterDataSet(cfg, logger):
         logger.log_message (f"Total number of rows in the dataset: {len(jj_all_data)}")
         logger.log_message ("*" * 80)
 
+        #For Label '1' I have different combinations of Species, Annotation, Reviewed. I want to know which combinations are the same in both Training and Fine Tuning
+        #First generate all the possible combinations of Species, Annotation, Reviewed for Label = 1
+        entries_to_keep_in_TT = []
+        entries_to_keep_in_FT = []
+        if "TRAINTEST" in cfg and "FINETUNING" in cfg:
+            combo = find_common_combinations(cfg, jj_all_data)
+            if len(combo) > 0 and cfg["tmp"]["createTT"] and cfg["tmp"]["createFT"]:
+                logger.log_message(f"There probably are common proteins in Train and FineTuning datasets. This shared data will be divided between Train ({cfg['TRAINTEST']['perc_if_ft_overlap']*100:.1f}%) and FineTuning ({(1-cfg['TRAINTEST']['perc_if_ft_overlap'])*100:.1f}%) datasets.")
+                jj_all_data_TT = applyFilters2DF(jj_all_data, labelConfig(cfg, "TRAINTEST"), logger, skipbalance=True) #TT Test Train
+                jj_all_data_FT = applyFilters2DF(jj_all_data, labelConfig(cfg, "FINETUNING"), logger, skipbalance=True) #FT Fine Tuning
+                jj_all_data_TT = jj_all_data_TT[jj_all_data_TT["Label"] == 1]
+                logger.log_message(f"Number of rows with Label 1 in TT: {len(jj_all_data_TT)}")
+                jj_all_data_FT = jj_all_data_FT[jj_all_data_FT["Label"] == 1]
+                logger.log_message(f"Number of rows with Label 1 in FT: {len(jj_all_data_FT)}")
+                # Get the rows that are in both datasets, matching on the Entry column
+                common_data = pd.merge(jj_all_data_TT, jj_all_data_FT, on="Entry Name", how="inner")
+                #Create a list of protein names that have to be kept in FT only (1 - perc_if_ft_overlap) of these
+                entries_to_keep_in_TT = common_data.sample(frac=cfg['TRAINTEST']['perc_if_ft_overlap'], random_state=42)["Entry Name"].tolist()
+                entries_to_keep_in_FT = common_data[~common_data["Entry Name"].isin(entries_to_keep_in_TT)]["Entry Name"].tolist()
+
         # I apply three different filters, one for Training/Test, one for FineTuning (if necessary), and one for final Validation
+        if "TRAINTEST" in cfg:
+            if cfg["tmp"]["createTT"]:
+                # ******* TRAIN/TEST FILTERS
+                jj_all_data_TT = applyFilters2DF(jj_all_data, labelConfig(cfg, "TRAINTEST"), logger) #TT Test Train
+                if len(entries_to_keep_in_TT) > 0:
+                    #remove from jj_all_data_TT the rows that are in entries_to_keep_in_FT and keep everythong else
+                    jj_all_data_TT = jj_all_data_TT[~jj_all_data_TT["Entry Name"].isin(entries_to_keep_in_FT)]
+                    numToRemove = len(entries_to_keep_in_FT)
+                    indexToRemove = jj_all_data_TT[jj_all_data_TT["Label"] == 0].sample(n=numToRemove, random_state=42).index
+                    jj_all_data_TT = jj_all_data_TT.drop(indexToRemove)
+                    logger.log_message(f"Number of proteins removed from TT because in common with FT: {len(indexToRemove) * 2}")
 
-        if cfg["tmp"]["createTT"]:
-            # ******* TRAIN/TEST FILTERS
-            jj_all_data_TT = applyFilters2DF(jj_all_data, labelConfig(cfg, "TRAINTEST"), logger) #TT Test Train
-            #Save the datasets to csv files
-            #jj_all_data_TT = jj_all_data_TT.drop(columns=["Annotation", "Reviewed"])
-            outFile = os.path.join(pre_input_prc_folder_out, "dataset_TT.csv")
-            jj_all_data_TT.to_csv(outFile, ",", mode="w", header=True, index=False)
-            logger.log_message(f"TT Dataset created...", progress=0.5)
-        else:
-            jj_all_data_TT = pd.read_csv(os.path.join(pre_input_prc_folder_out, "dataset_TT.csv"), delimiter=',', low_memory=False)
-            logger.log_message(f"TT Dataset loaded...", progress=0.5)
+                #Save the datasets to csv files
+                outFile = os.path.join(pre_input_prc_folder_out, "dataset_TT.csv")
+                jj_all_data_TT.to_csv(outFile, ",", mode="w", header=True, index=False)
+                logger.log_message(f"TT Dataset created...", progress=0.5)
+            else:
+                jj_all_data_TT = pd.read_csv(os.path.join(pre_input_prc_folder_out, "dataset_TT.csv"), delimiter=',', low_memory=False)
+                logger.log_message(f"TT Dataset loaded...", progress=0.5)
 
-
-        if cfg["tmp"]["createFT"]:
-            #******* FINETUNING FILTERS
-            if "FINETUNING" in cfg:
-                #I need to remove from jj_all_data the rows that are already in jj_all_data_TT
-                jj_all_data_FT = jj_all_data[~jj_all_data.index.isin(jj_all_data_TT.index)]
-                jj_all_data_FT = applyFilters2DF(jj_all_data_FT, labelConfig(cfg, "FINETUNING"), logger) #FT Fine Tuning
-                outFile = os.path.join(pre_input_prc_folder_out, "dataset_FT.csv")
-                jj_all_data_FT.to_csv(outFile, ",", mode="w", header = True, index=False)
-                logger.log_message(f"FT Dataset created...", progress=0.7)
-        else:
-            jj_all_data_FT = pd.read_csv(os.path.join(pre_input_prc_folder_out, "dataset_FT.csv"), delimiter=',', low_memory=False)
-            logger.log_message(f"FT Dataset loaded...", progress=0.7)
+        if "FINETUNING" in cfg:
+            if cfg["tmp"]["createFT"]:
+                #******* FINETUNING FILTERS
+                if "FINETUNING" in cfg:
+                    #I need to remove from jj_all_data the rows that are already in jj_all_data_TT
+                    jj_all_data_FT = jj_all_data[~jj_all_data.index.isin(jj_all_data_TT.index)]
+                    jj_all_data_FT = applyFilters2DF(jj_all_data_FT, labelConfig(cfg, "FINETUNING"), logger) #FT Fine Tuning
+                    outFile = os.path.join(pre_input_prc_folder_out, "dataset_FT.csv")
+                    jj_all_data_FT.to_csv(outFile, ",", mode="w", header = True, index=False)
+                    logger.log_message(f"FT Dataset created...", progress=0.7)
+            else:
+                jj_all_data_FT = pd.read_csv(os.path.join(pre_input_prc_folder_out, "dataset_FT.csv"), delimiter=',', low_memory=False)
+                logger.log_message(f"FT Dataset loaded...", progress=0.7)
 
         if cfg["tmp"]["createFV"] or cfg["GENERAL"]["type"] == "leaveoneout":
             if cfg["GENERAL"]["type"] == "leaveoneout":
+                # put in jj_all_data_FV all the rows related to Spieces in leaveoneoutspecies
+                l1o_list = [item for sublist in cfg["TRAINTEST"]["leaveoneoutspecies"] for item in sublist]
+                jj_all_data_FV = jj_all_data[jj_all_data['Species'].isin(l1o_list)]
                 if "VALIDATION" in cfg:
-                    jj_all_data_FV = applyFilters2DF(jj_all_data, labelConfig(cfg, "VALIDATION"), logger)  # FV Final Validation - The code will make sure that validation and train/test never overlap
+                    jj_all_data_FV = applyFilters2DF(jj_all_data_FV, labelConfig(cfg, "VALIDATION"), logger)  # FV Final Validation - The code will make sure that validation and train/test never overlap
                 else:
-                    jj_all_data_FV = applyFilters2DF(jj_all_data, {}, logger)  # FV Final Validation - The code will make sure that validation and train/test never overlap
+                    jj_all_data_FV = applyFilters2DF(jj_all_data_FV, {}, logger)  # FV Final Validation - The code will make sure that validation and train/test never overlap
             #******* VALIDATION FILTERS
             else:
                 # I need to remove from jj_all_data the rows that are already in jj_all_data_TT and jj_all_data_FT

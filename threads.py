@@ -229,7 +229,7 @@ def thread_jj3ft(cfg, window, callback=None, semaphore=None):
         for EPOCHS, LR, BATCH, L1O in product(cfg["TRAINTEST"]["epoch"], cfg["TRAINTEST"]["learning_rate"], cfg["TRAINTEST"]["batch_size"], range(len(cfg["TRAINTEST"]["leaveoneoutspecies"]))):
             model_names.append(
                 f'M_{cfg["GENERAL"]["acronym"]}_epochs_{EPOCHS}_lr_{LR:.7f}_model_{cfg["TRAINTEST"]["model_name"]}_batch_{BATCH}_exclude_{L1O}.pl')
-            model_strings.append(f'{cfg["GENERAL"]["acronym"]}-{EPOCHS}-{LR:.7f}-{cfg["TRAINTEST"]["model_name"]}-{BATCH}-{L1O}')
+            model_strings.append(f'{cfg["GENERAL"]["acronym"]}-{EPOCHS}-{LR:.7f}-{cfg["TRAINTEST"]["model_name"]}-{BATCH}-exclude-{L1O}')
 
     #Now I run a FineTuning on each of the models for every combination of FT epochs, learning rate and batch size
     for EPOCHS, LR, BATCH, MODEL in product(cfg["FINETUNING"]["epoch"], cfg["FINETUNING"]["learning_rate"], cfg["FINETUNING"]["batch_size"], range(len(model_names))):
@@ -280,12 +280,14 @@ def thread_jj4(cfg, window, callback=None, semaphore=None):
         semaphore.acquire()
 
     model_names = []
-    if "FINETUNING" not in cfg:
+    if cfg["VALIDATION"]["input_model"] in ["both", "tt"]:
+    #if "FINETUNING" not in cfg:
         #get the names of all the models in the folder 1.DL_Training/Model whose filename starts with M_<acronym> and ends with .pl
         for file in os.listdir(os.path.join("experiments", cfg["GENERAL"]["folder"], "1.DL_Training", "Model")):
-            if file.startswith(f'M_{cfg["GENERAL"]["acronym"]}') and file.endswith('.pl'):
+            if file.startswith(f'M_TT_') and file.endswith('.pl'):
                 model_names.append(file)
-    else:
+    #else:
+    if cfg["VALIDATION"]["input_model"] in ["both", "ft"]:
         #get the names of all the models in the folder 1.DL_Training/Model whose filename starts with M_<acronym> and ends with .pl
         for file in os.listdir(os.path.join("experiments", cfg["GENERAL"]["folder"], "1.DL_Training", "Model")):
             if file.startswith('M_FT_') and file.endswith('.pl'):
@@ -321,10 +323,10 @@ def thread_jj4(cfg, window, callback=None, semaphore=None):
         else:
             if cfg["GENERAL"]["type"] == "single":
                 window.logger_handler.log_message(f'Inference #{idx}...', idx / len(model_names))
-                jj4_DLinference.DL_validate(os.path.join(model_path,model), cfg["TRAINTEST"]["model_name"], validationDataSet, os.path.join(log_file_path, log_file_name), window.logger_handler, torchdevice = cfg["ENVIRONMENT"]["torchdevice"])
+                jj4_DLinference.DL_validate(cfg, os.path.join(model_path,model), cfg["TRAINTEST"]["model_name"], validationDataSet, os.path.join(log_file_path, log_file_name), window.logger_handler, torchdevice = cfg["ENVIRONMENT"]["torchdevice"])
             else:
                 window.logger_handler.log_message(f'Inference species: {cfg["TRAINTEST"]["leaveoneoutspecies"][exclude]}...', idx / len(model_names))
-                jj4_DLinference.DL_validate(os.path.join(model_path,model), cfg["TRAINTEST"]["model_name"], validationDataSet, os.path.join(log_file_path, log_file_name), window.logger_handler, validationSpecies=cfg["TRAINTEST"]["leaveoneoutspecies"][exclude], torchdevice = cfg["ENVIRONMENT"]["torchdevice"])
+                jj4_DLinference.DL_validate(cfg, os.path.join(model_path,model), cfg["TRAINTEST"]["model_name"], validationDataSet, os.path.join(log_file_path, log_file_name), window.logger_handler, validationSpecies=cfg["TRAINTEST"]["leaveoneoutspecies"][exclude], torchdevice = cfg["ENVIRONMENT"]["torchdevice"])
 
     valStatsFolder.analyseValidationFolder(window.logger_handler, os.path.join("experiments", cfg["GENERAL"]["folder"], "inferences"))
 

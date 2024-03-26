@@ -92,8 +92,8 @@ def computeEmbeddings(cfg, logger):
     # @title Load encoder-part of ProtT5 in half-precision. { display-mode: "form" }
     # Load ProtT5 in half-precision (more specifically: the encoder-part of ProtT5-XL-U50)
 
-    def get_T5_model(device):
-        model = T5EncoderModel.from_pretrained("Rostlab/prot_t5_xl_half_uniref50-enc")  # prot_t5_xl_half_uniref50-enc prot_t5_xl_uniref50
+    def get_T5_model(cfg, device):
+        model = T5EncoderModel.from_pretrained("Rostlab/" + cfg["EMBEDDINGS"]["model"]) # prot_t5_xl_half_uniref50-enc")  # prot_t5_xl_half_uniref50-enc prot_t5_xl_uniref50
         model = model.to(device)  # move model to GPU
         model = model.eval()  # set model to evaluation model
         tokenizer = T5Tokenizer.from_pretrained('Rostlab/prot_t5_xl_half_uniref50-enc', do_lower_case=False)
@@ -224,7 +224,7 @@ def computeEmbeddings(cfg, logger):
 
     # Load the encoder part of ProtT5-XL-U50 in half-precision (recommended)
     logger.log_message("Loading T5 encoder model ...")
-    model, tokenizer = get_T5_model(device)
+    model, tokenizer = get_T5_model(cfg, device)
 
     #***********************************************************************************************
     val_folder = os.path.join(cfg["UNIPROT"]["go_folder"], "downloads")
@@ -245,12 +245,12 @@ def computeEmbeddings(cfg, logger):
                 dftmp = pd.read_csv(file, delimiter=',', low_memory=False)
                 dfCache = pd.concat([dfCache, dftmp], ignore_index=True)
 
-    tsv_files = [file for file in os.listdir(val_folder) if file.endswith('.dataset.csv')]
-    tsvCount = len(tsv_files)
+    csv_files = [file for file in os.listdir(val_folder) if file.endswith('.dataset.csv')]
+    csvCount = len(csv_files)
     #for each file in the folder whose name end with ".tsv"
-    for idx, file in enumerate(tsv_files):
+    for idx, file in enumerate(csv_files):
         if file.endswith(".csv"):
-            logger.log_message(f"\nProcessing file {file}\n", idx/tsvCount)
+            logger.log_message(f"\nProcessing file {file}\n", idx/csvCount)
 
             #define final_output_path equal to the outputFolder + the name of the original filename + "_embeddings.csv"
             final_output_path = os.path.join(outputFolder, file.split('.')[0] + ".embeddings.csv")
@@ -300,6 +300,8 @@ def computeEmbeddings(cfg, logger):
                 #remove from df all the rows that are cachedEntries
                 df = df[~df['Entry'].isin(cachedEntries['Entry'])]
                 logger.log_message (f"File has {len(df)} sequences not in cache ...")
+            else:
+                cachedEntries = pd.DataFrame()
 
             logger.log_message (f"Calculating embeddings for {len(df)} sequences ...")
 

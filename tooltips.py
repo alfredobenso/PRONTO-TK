@@ -31,5 +31,7 @@ tooltips = {
     'go_taxonomies' : 'LIST: Taxonomy IDs to be used for the search',
     'go_folder' : 'The folder where the files downloaded from Uniprot are stored and the embeddings will be created',
     'datasetname' : 'The name of the dataset to be created',
-    'cachedataset' : 'LIST: a list of dataset.embeddings.csv files that can be used as cache during embeddings computation'
+    'cachedataset' : 'LIST: a list of dataset.embeddings.csv files that can be used as cache during embeddings computation',
+    'input_model': ' "both"/"tt"/"ft": Specifies the model to be used for inference. "both" means both the TT and FT models are used. "tt" means only the TT model is used. "ft" means only the FT model is used',
+
 }
