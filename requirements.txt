@@ -4,13 +4,11 @@ PIL
 webbrowser
 torchvision==0.17.0.dev20230928
 numpy==1.23.1
-shutil
 time
 itertools
 ast
 importlib_metadata==6.0.0
 pandas==1.5.0
-process
 goatools==1.3.11
 transformers==4.32.1
 sklearn
@@ -29,9 +27,12 @@ matplotlib==3.6.2
 threading
 tabulate==0.8.10
 argparse
-configparser
+configparser~=6.0.1
 wget==3.2
 termcolor==2.1.0
 customtkinter==5.1.3
 tkinter
 h5py==3.9.0
+scikit-learn~=1.3.0
+pillow~=9.3.0
+shutils~=0.1.0

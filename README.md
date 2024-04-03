@@ -30,6 +30,9 @@
 5. **Using the Application**
     The first operation is to select a configuration file. Configuration files are in the experiments/_configurations folder.
 
+## Configuration Manual
+see documentation [here](manual.md)
+
 ## Run a test experiment
 > **WARNING**: sometimes you need to RESIZE or MOVE the app windows to being able to interact with them (like clicking on a Phase to execute it or clicking a button). This is a known issue, and we are working on it.
 

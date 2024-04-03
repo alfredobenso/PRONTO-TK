@@ -1,5 +1,5 @@
 import os
-import shutil
+import shutils
 
 import pandas as pd
 def mergeEmbeddings(cfg, logger):
@@ -20,7 +20,7 @@ def mergeEmbeddings(cfg, logger):
         for file in os.listdir(val_folder):
             if file.endswith(".embeddings.csv"):
                 logger.log_message(f"Copying file {file} to {os.path.join(cfg['UNIPROT']['go_folder'], cfg['UNIPROT']['datasetname'] + '.embeddings.dataset.csv')}")
-                shutil.copy(os.path.join(val_folder, file), os.path.join(cfg['UNIPROT']['go_folder'], cfg['UNIPROT']['datasetname'] + '.embeddings.dataset.csv'))
+                shutils.copy(os.path.join(val_folder, file), os.path.join(cfg['UNIPROT']['go_folder'], cfg['UNIPROT']['datasetname'] + '.embeddings.dataset.csv'))
                 logger.log_message(f"Final embeddings dataset ready: {file}")
     else:
         for file in os.listdir(val_folder):
