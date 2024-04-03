@@ -15,7 +15,7 @@ class ConfigWindow(ctk.CTkToplevel):
         # Create a new window
         self.cfg_window = ctk.CTk()
         self.cfg_window.geometry("550x800")
-
+        self.cfg_window.title("PRONTO-TK Configuration")
         # Create a scrolled frame
         self.scrolled_frame = ctk.CTkScrollableFrame(self.cfg_window)
         self.scrolled_frame.pack(fill=ctk.BOTH, expand=True)
@@ -32,8 +32,8 @@ class ConfigWindow(ctk.CTkToplevel):
             frame.grid(row=row, column=0, columnspan = 2, pady=10, padx=10, ipady=5, sticky="nsew")
             #frame.grid(row=row, column=0, sticky='nsew')
 
-            label = ctk.CTkLabel(frame, text=f"{section}", anchor='w', font=self.my_font)
-            label.grid(row=row, column=0, columnspan = 2, pady=5, padx=5, sticky='w')
+            label = ctk.CTkLabel(frame, text=f"{section}", anchor='w', font=self.my_font, fg_color="cornsilk", justify="left", height=1)
+            label.grid(row=row, column=0, columnspan = 2, ipady=5, ipadx=5, sticky='ew')
 
             row += 1
             for key in self.tmpCfg[section]:

@@ -29,7 +29,7 @@ class MainWindow:
             self.cfg = read_configuration(self)
 
         self.window.geometry("1400x700")
-        self.window.title("RBP ToolKit")
+        self.window.title("PRONTO-TK")
 
         self.my_font = ctk.CTkFont(family="Helvetica", size = 16, weight = "bold")
         self.labelTitle = ctk.CTkLabel(self.window, text=f"{self.cfg['GENERAL']['name']}\n{self.cfg['GENERAL']['type'].capitalize()} Experiment", font=self.my_font)
