@@ -101,9 +101,9 @@ def analyze_and_plot_validation_results(logger, df, folder_path, file_name):
                 if len(df_annot[(df_annot['Label'] == 1)]) > 0:
                         casesCount += f"{annotation}: {100 * len(df_annot[(df_annot['Label'] == 1) & (df_annot['1'] >= 0.5)]) / len(df_annot[(df_annot['Label'] == 1)]):.4f} % ({len(df_annot[(df_annot['Label'] == 1) & (df_annot['1'] >= 0.5)])}/{len(df_annot[(df_annot['Label'] == 1)])})\n"
 
-            metrics_list.append({'Species': specie, 'Accuracy': accuracy, 'Precision': precision, 'Recall': recall, 'FScore': fscore, 'TP/L_1': casesCount})
+            metrics_list.append({'Species': specie, 'Accuracy': accuracy, 'Precision': precision, 'Recall': recall, 'F-score': fscore, 'TP/L_1': casesCount})
         else:
-            metrics_list.append({'Species': specie, 'Accuracy': accuracy, 'Precision': precision, 'Recall': recall, 'FScore': fscore})
+            metrics_list.append({'Species': specie, 'Accuracy': accuracy, 'Precision': precision, 'Recall': recall, 'F-score': fscore})
 
     # Convert list to DataFrame
     metrics_df = pd.DataFrame(metrics_list)
@@ -197,9 +197,9 @@ def analyze_and_plot_validation_results(logger, df, folder_path, file_name):
             ax.set_xticklabels(species)
 
         # Create a table with, for each Species, Accuracy, Precision, and Recall
-        table_data = metrics_df[['Accuracy', 'Precision', 'Recall']].values.round(4)
+        table_data = metrics_df[['Accuracy', 'Precision', 'Recall', 'F-score']].values.round(4)
         table_rows = metrics_df['Species']
-        table_columns = ['Accuracy', 'Precision', 'Recall']
+        table_columns = ['Accuracy', 'Precision', 'Recall', 'F-score']
 
         base_height_per_row = 0.15
         # Calculate total height based on number of rows
@@ -233,7 +233,7 @@ This function is used to analyze the validation results of a folder with CSV fil
 def analyseValidationFolder(logger, folder_path):
 
     # Initialize a list to store the results
-    all_results_df = pd.DataFrame(columns=['FileName', 'Origin', 'Species', 'Accuracy', 'Precision', 'Recall', 'Epochs', 'Learning Rate', 'Model', 'Batch', 'Type'])
+    all_results_df = pd.DataFrame(columns=['FileName', 'Origin', 'Species', 'Accuracy', 'Precision', 'Recall', 'F-score','Epochs', 'Learning Rate', 'Model', 'Batch', 'Type'])
 
     # Loop over all CSV files in the selected folder
     for file_name in os.listdir(folder_path):
@@ -280,6 +280,7 @@ def analyseValidationFolder(logger, folder_path):
         all_results_df['Accuracy'] = pd.to_numeric(all_results_df['Accuracy'], errors='coerce')
         all_results_df['Precision'] = pd.to_numeric(all_results_df['Precision'], errors='coerce')
         all_results_df['Recall'] = pd.to_numeric(all_results_df['Recall'], errors='coerce')
+        all_results_df['F-score'] = pd.to_numeric(all_results_df['F-score'], errors='coerce')
 
         # After the loop, all_results_df will have the results for each species from each file and for each origin
         # You can then plot these results
@@ -295,8 +296,9 @@ def analyseValidationFolder(logger, folder_path):
                             mean_accuracy = all_results_df[(all_results_df['Origin'] == origin) & (all_results_df['Epochs'] == epochs) & (all_results_df['Learning Rate'] == lr) & (all_results_df['Model'] == model) & (all_results_df['Batch'] == batch)]['Accuracy'].mean()
                             mean_precision = all_results_df[(all_results_df['Origin'] == origin) & (all_results_df['Epochs'] == epochs) & (all_results_df['Learning Rate'] == lr) & (all_results_df['Model'] == model) & (all_results_df['Batch'] == batch)]['Precision'].mean()
                             mean_recall = all_results_df[(all_results_df['Origin'] == origin) & (all_results_df['Epochs'] == epochs) & (all_results_df['Learning Rate'] == lr) & (all_results_df['Model'] == model) & (all_results_df['Batch'] == batch)]['Recall'].mean()
+                            mean_fscore = all_results_df[(all_results_df['Origin'] == origin) & (all_results_df['Epochs'] == epochs) & (all_results_df['Learning Rate'] == lr) & (all_results_df['Model'] == model) & (all_results_df['Batch'] == batch)]['F-score'].mean()
                             #append a new row in all_results_df with Species="all"
-                            all_results_df.loc[len(all_results_df)] = [None, origin, "all", mean_accuracy, mean_precision, mean_recall, epochs, lr, model, batch, "ALL"]
+                            all_results_df.loc[len(all_results_df)] = [None, origin, "all", mean_accuracy, mean_precision, mean_recall, mean_fscore, epochs, lr, model, batch, "ALL"]
 
         #remove rows that have the column Species != "all and have nan in the columns Accuracy, Precision, Recall (they are combinations that do not exist)
         # Create a mask for rows where 'Type' is not 'ALL' and 'Accuracy', 'Precision', or 'Recall' is NaN
@@ -356,15 +358,14 @@ def analyseValidationFolder(logger, folder_path):
         # Create a size array where the size is larger for rows where Species = ALL
         size_array = [20 if species == 'all' else 10 for species in all_results_df['Species']]
 
-
         # Create a 3D scatter plot of accuracy, precision, and recall
         fig = go.Figure(data=[go.Scatter3d(
-            x=all_results_df['Accuracy'],
-            y=all_results_df['Precision'],
-            z=all_results_df['Recall'],
+            x=all_results_df['Recall'].astype(float),
+            y=all_results_df['Precision'].astype(float),
+            z=all_results_df['Accuracy'].astype(float),
             mode='markers',
-            text=all_results_df[['Origin', 'Model', 'Learning Rate', 'Epochs', 'Batch', 'Species']].apply(
-                lambda row: f'Origin: {row["Origin"]}, Model: {row["Model"]}, Learning Rate: {row["Learning Rate"]}, Epochs: {row["Epochs"]}, Batch: {row["Batch"]}, Species: {row["Species"]}',
+            text=all_results_df[['Origin', 'Model', 'Learning Rate', 'Epochs', 'Batch', 'Species', 'Accuracy', 'F-score']].apply(
+                lambda row: f'F-Score: {row["F-score"]}, Accuracy: {row["Accuracy"]}<br>Learning Rate: {row["Learning Rate"]}, Epochs: {row["Epochs"]}, Batch: {row["Batch"]}<br>Origin: {row["Origin"]}, Model: {row["Model"]}, Species: {row["Species"]}',
                 axis=1),
             hoverinfo='text',
             marker=dict(
@@ -377,11 +378,85 @@ def analyseValidationFolder(logger, folder_path):
 
         # Set labels
         fig.update_layout(scene=dict(
-            xaxis_title='Cumulative Accuracy',
+            xaxis_title='Cumulative Recall',
             yaxis_title='Cumulative Precision',
-            zaxis_title='Cumulative Recall'))
+            zaxis_title='Cumulative Accuracy'))
         fig.show()
 
+        #Second plot for exploring parameters
+        # conidero solo le medie
+        all_results_df = all_results_df[all_results_df['Species'] == 'all']
+
+        # Minimum and maximum sizes
+        min_size = 10
+        max_size = 60
+
+        # Calculate the product of precision and recall
+        product = all_results_df['Precision'] * all_results_df['Recall']
+        scaled_product = (product - product.min()) / (product.max() - product.min())
+
+        # Apply a logarithmic scale to the product and scale it to the range [10, 45]. The smallest product has to correspond to the smallest size (10) and the largest product to the largest size (45)
+        #size_array = min_size + (max_size - min_size) * np.log1p(scaled_product)
+        size_array = min_size + (max_size - min_size) * scaled_product
+        #size_array = 10 + 35 * np.log(product + small_constant) / np.log(product.max() + small_constant)
+
+        print(product)
+        # calculate the size_array correlated to the product of precision and recall. For the minimum value of the product the size is 10. For the max value is 40. For all other values the size is proportional
+        # size_array = [10 + 35 * (row['Precision'] * row['Recall'] - all_results_df['Precision'].min() * all_results_df[
+        #     'Recall'].min()) / (all_results_df['Precision'].max() * all_results_df['Recall'].max() - all_results_df[
+        #     'Precision'].min() * all_results_df['Recall'].min()) for index, row in all_results_df.iterrows()]
+
+        custom_color_scale = [(all_results_df["Accuracy"].min(), 'red'),  # Red for the lowest values
+                              (all_results_df["Accuracy"].max(), 'green')]  # Green for the highest values
+
+        best_model = all_results_df.loc[all_results_df['F-score'].idxmax()]
+        # Define a function that maps accuracy to a color
+        def map_to_color(row):
+            #if row and best model are the same, return gold
+            if row['Origin'] == best_model['Origin'] and row['Epochs'] == best_model['Epochs'] and row['Learning Rate'] == best_model['Learning Rate'] and row['Model'] == best_model['Model'] and row['Batch'] == best_model['Batch']:
+                return 'gold'
+            else:
+                value = row['F-score'] * 100  # Convert to percentage
+                if value < 90:
+                    return 'red'
+                else:
+                    # Normalize F-score to the range [0, 1]
+                    normalized_value = (value - 90) / (100 - 90)
+                    # Convert normalized F-score to an integer in the range [0, 255]
+                    green_value = int(normalized_value * 255)
+                    # Return a color in the format 'rgb(0, green_value, 0)'
+                    return f'rgb(0, {green_value}, 0)'
+
+        # Apply the function to the 'Accuracy' column to get the colors
+        colors = all_results_df.apply(map_to_color, axis = 1)
+
+        # Create a 3D scatter plot of accuracy, precision, and recall
+        fig2 = go.Figure(data=[go.Scatter3d(
+            x=all_results_df['Epochs'].astype(float),
+            y=all_results_df['Learning Rate'].astype(float),
+            z=all_results_df['Batch'].astype(float),
+            mode='markers',
+            text=all_results_df[['Origin', 'Model', 'Learning Rate', 'Epochs', 'Batch', 'Accuracy', 'Precision', 'Recall', 'F-score']].apply(
+                lambda
+                    row: f'F-Score: {row["F-score"]}, Accuracy: {row["Accuracy"]}<br>Learning Rate: {row["Learning Rate"]}, Epochs: {row["Epochs"]}, Batch: {row["Batch"]}<br>Origin: {row["Origin"]}, Model: {row["Model"]}',
+                axis=1),
+            hoverinfo='text',
+            marker=dict(
+                size=size_array,
+                color=colors,
+                colorscale=custom_color_scale,
+                opacity=0.8
+            )
+        )])
+
+        # Set labels
+        fig2.update_layout(scene=dict(
+            xaxis_title='Epochs',
+            yaxis_title='Learning Rate',
+            zaxis_title='Batch'))
+        fig2.show()
+
+    return
 
 if __name__ == "__main__":
     root = tk.Tk()  # Using the Tkinter instance from PySimpleGUI
@@ -393,5 +468,5 @@ if __name__ == "__main__":
         print("No folder selected")
         exit()
 
-    analyseValidationFolder(folder_path)
+    analyseValidationFolder(None, folder_path)
     exit(0)
