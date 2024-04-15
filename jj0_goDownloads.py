@@ -113,36 +113,6 @@ def downloadUPProteins(cfg=None, logger=None):
         else:
           url = baseurl + q_rev + q_tax + q_gos_NOT + ")"
 
-        #url = "https://rest.uniprot.org/uniprotkb/search?"
-        # baseurl = "https://rest.uniprot.org/uniprotkb/stream?"
-        # baseurl = f"https://rest.uniprot.org/uniprotkb/stream?{fields}&{size}&{format}&query=("
-        #
-        # q_rev = "(reviewed:" + rev + ")"
-        # b1 = ''.join(["OR+(taxonomy_id:" + str(i) + ")+" for i in cfg['UNIPROT']['go_taxonomies']])
-        # taxonomy = "+AND+(" + b1[3:-1] + ")"
-        #
-        # if label == "YES":
-        #   b2 = ''.join(["OR+(" + gotype + ":" + str(i) + ")+" for i in finalTerms])
-        #   query_terms = "+AND+(" + b2[3:-1] + ")"
-        #   url = baseurl + q_rev + taxonomy + query_terms + ")"
-        # else:
-        #   b3 = ''.join(["OR+(" + "go" + ":" + str(i) + ")+" for i in finalTerms])
-        #   query_terms = "+NOT+(" + b3[3:-1] + ")"
-        #   url = baseurl + q_rev + taxonomy + query_terms + ")"
-
-        # url = "https://rest.uniprot.org/uniprotkb/search?"
-        # fields = "fields=accession,reviewed,id,protein_name,gene_names,organism_name,length,cc_caution,go_f,sequence"
-        # format = "format=tsv"
-        # taxonomy = f"taxonomy_id:{' OR '.join(cfg['UNIPROT']['go_taxonomies'])}"
-        # size = "size=" + str(cfg["UNIPROT"]["go_batchsize"])
-        # query_terms = f"{gotype}:({' OR '.join(finalTerms)})"
-        # if label == "YES":
-        #   query = "query=((" + taxonomy + ") + AND + (reviewed:" + rev + ") + (" + query_terms + "))"
-        # else:
-        #   query = "query=((" + taxonomy + ") + AND + (reviewed:" + rev + ") + NOT + (" + query_terms + "))"
-        #
-        # url = url + fields + "&" + format + "&" + size + "&" + query
-
         logger.log_message(f'URL: {url}')
 
         if cfg["UNIPROT"]["go_batchsize"] == -1:

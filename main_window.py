@@ -12,12 +12,17 @@ from process import myProcess
 from threads import *
 from config_window import *
 
+colorGREEN = "orange"
+colorRED = "purple"
+colorORANGE = "lightgrey"
+
 class MainWindow:
     '''
     This is the constructor method where the main window is initialized, and several UI components are created and packed into the window. It also reads the configuration file and sets up the initial state of the application.
     '''
     def __init__(self):
-        ctk.set_default_color_theme("green")
+        #ctk.set_default_color_theme("green")
+        ctk.set_default_color_theme("dark-blue")
         self.window = ctk.CTk()
         self.window.focus_force()  # Add this line to force focus on the window
         self.cfg_filename = ctk.filedialog.askopenfilename(title="Select configuration file", initialdir=os.path.join("experiments", "_configurations"),filetypes=(("INI files", "*.ini"), ("All files", "*.*")))
@@ -170,11 +175,11 @@ class MainWindow:
         if "UNIPROT" in self.cfg or "EMBEDDINGS" in self.cfg:
             if "UNIPROT" in self.cfg and os.path.exists(os.path.join(self.cfg["UNIPROT"]["go_folder"], "downloads", self.cfg["UNIPROT"]["datasetname"] + ".dataset.csv")):
                 #textbox background green
-                self.textboxDATA_UP.configure(fg_color="green")
+                self.textboxDATA_UP.configure(fg_color=colorGREEN)
                 self.buttonEMB.configure(state=ctk.NORMAL)
             else:
                 #textbox background red
-                self.textboxDATA_UP.configure(fg_color="red")
+                self.textboxDATA_UP.configure(fg_color=colorRED)
                 self.buttonEMB.configure(state=ctk.DISABLED)
 
         allOk = True
@@ -187,12 +192,12 @@ class MainWindow:
         if "EMBEDDINGS" in self.cfg:
             if not allOk:
                 if count < len(self.cfg["GENERAL"]["originaldataset"]):
-                    self.textboxDATA_IN.configure(fg_color="orange")
+                    self.textboxDATA_IN.configure(fg_color=colorORANGE)
                 else:
-                    self.textboxDATA_IN.configure(fg_color="red")
+                    self.textboxDATA_IN.configure(fg_color=colorRED)
             else:
                 #textbox background green
-                self.textboxDATA_IN.configure(fg_color="green")
+                self.textboxDATA_IN.configure(fg_color=colorGREEN)
 
         if "TRAINTEST-Label_1" in self.cfg or "TRAINTEST-Label_0" in self.cfg or "FINETUNING-Label_0" in self.cfg or "FINETUNING-Label_1" in self.cfg or "VALIDATION-Label" in self.cfg:
             if not allOk:
@@ -212,38 +217,38 @@ class MainWindow:
 
         if "TRAINTEST" in self.cfg:
             if not os.path.exists(os.path.join(datasetFolder, "dataset_TT.csv")):
-                self.textboxTT_DATA.configure(fg_color="red")
+                self.textboxTT_DATA.configure(fg_color=colorRED)
                 self.buttonTT.configure(state=ctk.DISABLED)
                 allOk = False
             else:
-                self.textboxTT_DATA.configure(fg_color="green")
+                self.textboxTT_DATA.configure(fg_color=colorGREEN)
                 self.buttonTT.configure(state=ctk.NORMAL)
 
         if "FINETUNING" in self.cfg:
             if not os.path.exists(os.path.join(datasetFolder, "dataset_FT.csv")):
-                self.textboxFT_DATA.configure(fg_color="red")
+                self.textboxFT_DATA.configure(fg_color=colorRED)
                 self.buttonFT.configure(state=ctk.DISABLED)
                 allOk = False
             else:
-                self.textboxFT_DATA.configure(fg_color="green")
+                self.textboxFT_DATA.configure(fg_color=colorGREEN)
                 self.buttonFT.configure(state=ctk.NORMAL)
 
         if "VALIDATION" in self.cfg:
             if not os.path.exists(os.path.join(datasetFolder, "dataset_FV.csv")):
-                self.textboxFV_DATA.configure(fg_color="red")
+                self.textboxFV_DATA.configure(fg_color=colorRED)
                 self.buttonFV.configure(state=ctk.DISABLED)
                 allOk = False
             else:
-                self.textboxFV_DATA.configure(fg_color="green")
+                self.textboxFV_DATA.configure(fg_color=colorGREEN)
                 self.buttonFV.configure(state=ctk.NORMAL)
 
         if "TRAINTEST" in self.cfg:
             if not allOk:
                 #textbox background red
-                self.textboxDATA_OUT.configure(fg_color="red")
+                self.textboxDATA_OUT.configure(fg_color=colorRED)
             else:
                 #textbox background green
-                self.textboxDATA_OUT.configure(fg_color="green")
+                self.textboxDATA_OUT.configure(fg_color=colorGREEN)
 
         model_path = os.path.join("experiments", self.cfg["GENERAL"]["folder"], "1.DL_Training", "Model")
 
@@ -252,30 +257,39 @@ class MainWindow:
                 totalModels = len(self.cfg["TRAINTEST"]["epoch"]) * len(self.cfg["TRAINTEST"]["learning_rate"]) * len(self.cfg["TRAINTEST"]["batch_size"])
                 availableModels = 0
                 for epochs, lr, batch in product(self.cfg["TRAINTEST"]["epoch"], self.cfg["TRAINTEST"]["learning_rate"], self.cfg["TRAINTEST"]["batch_size"]):
-                    model_file = f'M_{self.cfg["GENERAL"]["acronym"]}_epochs_{epochs}_lr_{lr:.7f}_model_{self.cfg["TRAINTEST"]["model_name"]}_batch_{batch}_exclude_-1.pl'
+                    model_file = f'M_TT_{self.cfg["GENERAL"]["acronym"]}_epochs_{epochs}_lr_{lr:.7f}_model_{self.cfg["TRAINTEST"]["model_name"]}_batch_{batch}_exclude_-1.pl'
                     if os.path.exists(os.path.join(model_path, model_file)):
                         availableModels += 1
             elif self.cfg["GENERAL"]["type"] == "leaveoneout":
                 totalModels = len(self.cfg["TRAINTEST"]["epoch"]) * len(self.cfg["TRAINTEST"]["learning_rate"]) * len(self.cfg["TRAINTEST"]["batch_size"]) * len(self.cfg["TRAINTEST"]["leaveoneoutspecies"])
                 availableModels = 0
                 for epochs, lr, batch, lOneOut in product(self.cfg["TRAINTEST"]["epoch"], self.cfg["TRAINTEST"]["learning_rate"], self.cfg["TRAINTEST"]["batch_size"], range(len(self.cfg["TRAINTEST"]["leaveoneoutspecies"]))):
-                    model_file = f'M_{self.cfg["GENERAL"]["acronym"]}_epochs_{epochs}_lr_{lr:.7f}_model_{self.cfg["TRAINTEST"]["model_name"]}_batch_{batch}_exclude_{lOneOut}.pl'
+                    model_file = f'M_TT_{self.cfg["GENERAL"]["acronym"]}_epochs_{epochs}_lr_{lr:.7f}_model_{self.cfg["TRAINTEST"]["model_name"]}_batch_{batch}_exclude_{lOneOut}.pl'
                     if os.path.exists(os.path.join(model_path, model_file)):
                         availableModels += 1
+
+            if "TRAINTEST" in self.cfg:
+                if availableModels == totalModels:
+                    #textbox background red
+                    self.textboxTT_MOD.configure(fg_color=colorGREEN)
+                elif availableModels == 0:
+                    #textbox background red
+                    self.textboxTT_MOD.configure(fg_color=colorRED)
+                else:
+                    #textbox background orange
+                    self.textboxTT_MOD.configure(fg_color=colorORANGE)
 
             if "FINETUNING" in self.cfg:
                 if availableModels == totalModels:
                     #textbox background red
-                    self.textboxTT_MOD.configure(fg_color="green")
                     self.buttonFT.configure(state=ctk.NORMAL)
                 elif availableModels == 0:
                     #textbox background red
-                    self.textboxTT_MOD.configure(fg_color="red")
                     self.buttonFT.configure(state=ctk.DISABLED)
                 else:
                     #textbox background orange
-                    self.textboxTT_MOD.configure(fg_color="orange")
                     self.buttonFT.configure(state=ctk.NORMAL)
+
 
         if "FINETUNING" in self.cfg and "TRAINTEST" in self.cfg:
             #Checking output FT models
@@ -316,18 +330,21 @@ class MainWindow:
                         if os.path.exists(os.path.join(model_path, model_file)):
                             availableModels += 1
 
-                if availableModels == totalModels:
-                    #textbox background red
-                    self.textboxFT_MOD.configure(fg_color="green")
-                    self.buttonFV.configure(state=ctk.NORMAL)
-                elif availableModels == 0:
-                    #textbox background red
-                    self.textboxFT_MOD.configure(fg_color="red")
-                    self.buttonFV.configure(state=ctk.DISABLED)
-                else:
-                    #textbox background orange
-                    self.textboxFT_MOD.configure(fg_color="orange")
-                    self.buttonFV.configure(state=ctk.NORMAL)
+            if availableModels == totalModels:
+                #textbox background red
+                self.textboxFT_MOD.configure(fg_color=colorGREEN)
+                self.buttonFV.configure(state=ctk.NORMAL)
+            elif availableModels == 0:
+                #textbox background red
+                self.textboxFT_MOD.configure(fg_color=colorRED)
+                self.buttonFV.configure(state=ctk.DISABLED)
+            else:
+                #textbox background orange
+                self.textboxFT_MOD.configure(fg_color=colorORANGE)
+                self.buttonFV.configure(state=ctk.NORMAL)
+        else:
+            color = self.textboxTT_MOD.cget("fg_color")
+            self.textboxFT_MOD.configure(fg_color=color)
 
     '''
     This method reads the configuration file and returns a dictionary with 
@@ -388,7 +405,7 @@ class MainWindow:
         self.cfg["tmp"]["createFV"] = jj2_prepareInputFiles.askForGenerateFile(os.path.join(pre_input_prc_folder_out, "dataset_FV.csv"), self.cfg["VALIDATION"]["createflag"])  if "VALIDATION" in self.cfg else True
 
         #get the color of self.textboxFT_MOD
-        if "TRAINTEST" in self.cfg and self.cfg["TRAINTEST"]["trainflag"] == "ask" and self.textboxTT_MOD.cget("fg_color") != "red":
+        if "TRAINTEST" in self.cfg and self.cfg["TRAINTEST"]["trainflag"] == "ask" and self.textboxTT_MOD.cget("fg_color") != colorRED:
             answer = messagebox.askyesno("Warning", f"Some of the output models are already present. Do you want to retrain them?", icon='warning')
             if answer == True:
                 self.cfg["TRAINTEST"]["trainflag"] = "yes"
@@ -396,7 +413,7 @@ class MainWindow:
                 self.cfg["TRAINTEST"]["trainflag"] = "no"
 
         #get the color of self.textboxFT_MOD
-        if "FINETUNING" in self.cfg and self.cfg["FINETUNING"]["trainflag"] == "ask" and self.textboxFT_MOD.cget("fg_color") != "red":
+        if "FINETUNING" in self.cfg and self.cfg["FINETUNING"]["trainflag"] == "ask" and self.textboxFT_MOD.cget("fg_color") != colorRED:
             answer = messagebox.askyesno("Warning", f"Some of the output Fine Tuned models are already present. Do you want to retrain them?", icon='warning')
             if answer == True:
                 self.cfg["FINETUNING"]["trainflag"] = "yes"
@@ -489,7 +506,7 @@ class MainWindow:
     def run_pipeline_stage_jj3(self):
 
         #get the color of self.textboxTT_MOD
-        if self.cfg["TRAINTEST"]["trainflag"] == "ask" and self.textboxTT_MOD.cget("fg_color") != "red":
+        if self.cfg["TRAINTEST"]["trainflag"] == "ask" and self.textboxTT_MOD.cget("fg_color") != colorRED:
             answer = messagebox.askyesno("Warning", f"Some of the output models are already present. Do you want to retrain them?", icon='warning')
             if answer == True:
                 self.cfg["TRAINTEST"]["trainflag"] = "yes"
@@ -502,7 +519,7 @@ class MainWindow:
     def run_pipeline_stage_jj3ft(self):
 
         #get the color of self.textboxFT_MOD
-        if self.cfg["FINETUNING"]["trainflag"] == "ask" and self.textboxFT_MOD.cget("fg_color") != "red":
+        if self.cfg["FINETUNING"]["trainflag"] == "ask" and self.textboxFT_MOD.cget("fg_color") != colorRED:
             answer = messagebox.askyesno("Warning", f"Some of the output Fine Tuned models are already present. Do you want to retrain them?", icon='warning')
             if answer == True:
                 self.cfg["FINETUNING"]["trainflag"] = "yes"
