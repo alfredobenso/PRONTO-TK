@@ -7,11 +7,12 @@ PRONTO is a Python-based tool designed to handle various operations related to b
 - pip install requirements.txt
 
 ## Usage
-Run the executable pronto.py
+Run the executable pronto-tk.py
 
 ## The main window
-The tool can be used in two ways: manual, by clicking the button of each stage, or automatically, by using the two separate "Run" buttons.
+The tool can be used in two ways: **manual**, by clicking the button of each stage, or **automatically**, by using the two separate "Run" buttons.
 The MOST IMPORTANT part of the tool is the CONFIGURATION FILE. The syntax HAS to be respected, otherwise the tool will not work.
+**Sometimes the main window does not respond if it is not resized or moved first**. This is a known issue and will be fixed in the future.
 
 ### Configuration
 The configuration for the application is done through a configuration file. This file is selected when the MainWindow is initialized. The configuration file is in INI format and contains various sections for different parts of the application.
