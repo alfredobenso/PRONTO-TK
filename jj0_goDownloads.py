@@ -83,72 +83,83 @@ def downloadUPProteins(cfg=None, logger=None):
     #go_manual_auto1 is a list of strings that contains the terms in go_manual_auto adding "go_" at the beginning of each term if the word "go" is not present
     go_manual_auto = ["go_" + k if "go" not in k else k for k in go_manual_auto]
 
-    totalLoops = len(go_reviewed) * len(go_manual_auto)
+    # Split GO terms into batches of 50 to avoid "Too many OR conditions" error (max is 100)
+    MAX_OR_CONDITIONS = 50
+    go_batches = [finalTerms[i:i + MAX_OR_CONDITIONS] for i in range(0, len(finalTerms), MAX_OR_CONDITIONS)]
+
+    logger.log_message(f"Total GO terms: {len(finalTerms)}, split into {len(go_batches)} batch(es)")
+
+    totalLoops = len(go_reviewed) * len(go_manual_auto) * len(go_batches)
     loopCount = 0
+
     for rev in go_reviewed:
       for gotype in go_manual_auto:
-        df = pd.DataFrame()
-        nomefile = "Label_" + label + "_" + "_".join(cfg["UNIPROT"]["go_taxonomies"]) + "_" + rev + "_" + gotype + "_" + "_".join(cfg["UNIPROT"]["go_ids"]) + ".tsv"
-        logger.log_message(f"\n\tLabel: {label} Taxonomies: {', '.join(cfg['UNIPROT']['go_taxonomies'])}, reviewed: {rev}, gotype: {gotype.replace('go_','')}, go_ids: {', '.join(finalTerms)}")
+        combined_df = pd.DataFrame()
 
-        format = "format=tsv"
-        size = "size=" + str(cfg["UNIPROT"]["go_batchsize"])
-        fields = "fields=accession,reviewed,id,protein_name,gene_names,organism_name,length,cc_caution,go_f,sequence"
+        for batch_idx, go_batch in enumerate(go_batches):
+          df = pd.DataFrame()
+          nomefile = "Label_" + label + "_" + "_".join(cfg["UNIPROT"]["go_taxonomies"]) + "_" + rev + "_" + gotype + "_batch" + str(batch_idx) + ".tsv"
+          logger.log_message(f"\n\tBatch {batch_idx + 1}/{len(go_batches)} - Label: {label}, Taxonomies: {', '.join(cfg['UNIPROT']['go_taxonomies'])}, reviewed: {rev}, gotype: {gotype.replace('go_','')}, GO terms in batch: {len(go_batch)}")
 
-        if cfg["UNIPROT"]["go_batchsize"] == -1:
-          baseurl = f"https://rest.uniprot.org/uniprotkb/stream?{fields}&{format}&query=("
-        else:
-          baseurl = f"https://rest.uniprot.org/uniprotkb/search?{fields}&{size}&{format}&query=("
+          format = "format=tsv"
+          size = "size=" + str(cfg["UNIPROT"]["go_batchsize"])
+          fields = "fields=accession,reviewed,id,protein_name,gene_names,organism_name,length,cc_caution,go_f,sequence"
 
-        q_rev = "(reviewed:" + rev + ")"
-        b1 = ''.join(["OR+(taxonomy_id:" + str(i) + ")+" for i in cfg['UNIPROT']['go_taxonomies']])
-        q_tax = "+AND+(" + b1[3:-1] + ")"
-        b2 = ''.join(["OR+(" + gotype + ":" + str(i).replace("GO:","") + ")+" for i in finalTerms])
-        q_gos = "+AND+(" + b2[3:-1] + ")"
-        b3 = ''.join(["OR+(" + gotype + ":" + str(i).replace("GO:","") + ")+" for i in finalTerms])
-        q_gos_NOT = "+NOT+(" + b3[3:-1] + ")"
+          if cfg["UNIPROT"]["go_batchsize"] == -1:
+            baseurl = f"https://rest.uniprot.org/uniprotkb/stream?{fields}&{format}&query=("
+          else:
+            baseurl = f"https://rest.uniprot.org/uniprotkb/search?{fields}&{size}&{format}&query=("
 
-        if label == "YES":
-          url = baseurl + q_rev + q_tax + q_gos + ")"
-        else:
-          url = baseurl + q_rev + q_tax + q_gos_NOT + ")"
+          q_rev = "(reviewed:" + rev + ")"
+          b1 = ''.join(["OR+(taxonomy_id:" + str(i) + ")+" for i in cfg['UNIPROT']['go_taxonomies']])
+          q_tax = "+AND+(" + b1[3:-1] + ")"
+          b2 = ''.join(["OR+(" + gotype + ":" + str(i).replace("GO:","") + ")+" for i in go_batch])
+          q_gos = "+AND+(" + b2[3:-1] + ")"
+          b3 = ''.join(["OR+(" + gotype + ":" + str(i).replace("GO:","") + ")+" for i in go_batch])
+          q_gos_NOT = "+NOT+(" + b3[3:-1] + ")"
 
-        logger.log_message(f'URL: {url}')
+          if label == "YES":
+            url = baseurl + q_rev + q_tax + q_gos + ")"
+          else:
+            url = baseurl + q_rev + q_tax + q_gos_NOT + ")"
 
-        if cfg["UNIPROT"]["go_batchsize"] == -1:
-          logger.log_message(f'Downloading proteins ...')
-          all_fastas = requests.get(url).text
-          df = pd.read_csv(io.StringIO((all_fastas)), sep='\t', escapechar='\n')
-        else:
-          # Compute number of proteins returned by the query
-          response = session.get(url)
-          response.raise_for_status()
-          total = response.headers["x-total-results"]
-          logger.log_message(f'Total number of proteins for label: {label}: {total}')
-          if int(cfg["UNIPROT"]["go_maxproteinsdownload"]) != -1:
-            total = min(int(total), int(cfg["UNIPROT"]["go_maxproteinsdownload"]))
-          logger.log_message(f'Number of proteins downloaded in each batch: {cfg["UNIPROT"]["go_batchsize"]}', loopCount / totalLoops)
-          df = getBatch2Df(url, df, logger, total)
+          logger.log_message(f'URL: {url}')
 
-        if "Annotation" not in df.columns:
-          df.insert(0, "Annotation", None)
-        df["Annotation"].fillna(gotype.replace("go_", ""), inplace=True)
+          if cfg["UNIPROT"]["go_batchsize"] == -1:
+            logger.log_message(f'Downloading proteins ...')
+            all_fastas = requests.get(url).text
+            df = pd.read_csv(io.StringIO((all_fastas)), sep='\t', escapechar='\n')
+          else:
+            # Compute number of proteins returned by the query
+            response = session.get(url)
+            response.raise_for_status()
+            total = response.headers["x-total-results"]
+            logger.log_message(f'Total number of proteins for label: {label}: {total}')
+            if int(cfg["UNIPROT"]["go_maxproteinsdownload"]) != -1:
+              total = min(int(total), int(cfg["UNIPROT"]["go_maxproteinsdownload"]))
+            logger.log_message(f'Number of proteins downloaded in each batch: {cfg["UNIPROT"]["go_batchsize"]}', loopCount / totalLoops)
+            df = getBatch2Df(url, df, logger, total)
 
-        if "Label" not in df.columns:
-          df.insert(0, "Label", None)
-          logger.log_message(f'Column "Label" added')
+          if "Annotation" not in df.columns:
+            df.insert(0, "Annotation", None)
+          df["Annotation"].fillna(gotype.replace("go_", ""), inplace=True)
 
-        df["Label"].fillna((1 if label == "YES" else 0), inplace=True)
-        logger.log_message(f'Label set to {(1 if label == "YES" else 0)}')
+          if "Label" not in df.columns:
+            df.insert(0, "Label", None)
+            logger.log_message(f'Column "Label" added')
 
-        #if cfg["UNIPROT"]["go_folder"], "downloads" does not exist, create it
-        if not os.path.exists(os.path.join(cfg["UNIPROT"]["go_folder"], "downloads")):
-            os.makedirs(os.path.join(cfg["UNIPROT"]["go_folder"], "downloads"))
-        df.to_csv(os.path.join(cfg["UNIPROT"]["go_folder"], "downloads", nomefile), index=False, sep='\t')
+          df["Label"].fillna((1 if label == "YES" else 0), inplace=True)
+          logger.log_message(f'Label set to {(1 if label == "YES" else 0)}')
 
-        loopCount += 1
+          #if cfg["UNIPROT"]["go_folder"], "downloads" does not exist, create it
+          if not os.path.exists(os.path.join(cfg["UNIPROT"]["go_folder"], "downloads")):
+              os.makedirs(os.path.join(cfg["UNIPROT"]["go_folder"], "downloads"))
+          df.to_csv(os.path.join(cfg["UNIPROT"]["go_folder"], "downloads", nomefile), index=False, sep='\t')
 
-    return df
+          combined_df = pd.concat([combined_df, df], ignore_index=True)
+          loopCount += 1
+
+    return combined_df
 
   ###### main code of the function downloadUPProteins() ######
   if cfg["UNIPROT"]["createflag"].lower() != "no":
