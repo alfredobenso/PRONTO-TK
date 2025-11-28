@@ -128,6 +128,8 @@ def computeEmbeddings(cfg, logger):
             seq = ' '.join(list(seq))
             batch.append((pdb_id, seq, seq_len))
 
+            logger.log_message(f"{pdb_id} (L={seq_len}) ...")
+
             # count residues in current batch and add the last sequence length to
             # avoid that batches with (n_res_batch > max_residues) get processed
             n_res_batch = sum([s_len for _, _, s_len in batch]) + seq_len
@@ -141,14 +143,16 @@ def computeEmbeddings(cfg, logger):
                 input_ids = torch.tensor(token_encoding['input_ids']).to(device)
                 attention_mask = torch.tensor(token_encoding['attention_mask']).to(device)
 
-                try:
-                    with torch.no_grad():
+                with torch.no_grad():
+                    try:
                         # returns: ( batch-size x max_seq_len_in_minibatch x embedding_dim )
                         embedding_repr = model(input_ids, attention_mask=attention_mask)
                         #logger.log_message(".")
-                except RuntimeError:
-                    logger.log_message("RuntimeError during embedding for {} (L={})".format(pdb_id, seq_len))
-                    continue
+                #except RuntimeError:
+                    except Exception as e:
+                        logger.log_message(f"RuntimeError during embedding for {pdb_id} (L={seq_len})")
+                        logger.log_message
+                        continue
 
                 if sec_struct:  # in case you want to predict secondary structure from embeddings
                     d3_Yhat, d8_Yhat, diso_Yhat = sec_struct_model(embedding_repr.last_hidden_state)
@@ -167,7 +171,7 @@ def computeEmbeddings(cfg, logger):
                         results["protein_embs"][identifier] = protein_emb.detach().cpu().numpy().squeeze()
 
         passed_time = time.time() - start
-        if (per_residue or per_protein):
+        if (per_residue or per_protein) and len(results["protein_embs"]) > 0:
             avg_time = passed_time / len(results["residue_embs"]) if per_residue else passed_time / len(
             results["protein_embs"])
         else:
@@ -250,16 +254,32 @@ def computeEmbeddings(cfg, logger):
     #for each file in the folder whose name end with ".tsv"
     for idx, file in enumerate(csv_files):
         if file.endswith(".csv"):
-            logger.log_message(f"\nProcessing file {file}\n", idx/csvCount)
+            logger.log_message(f"\nProcessing file {os.path.join(outputFolder, file)}\n", idx/csvCount)
 
             #define final_output_path equal to the outputFolder + the name of the original filename + "_embeddings.csv"
             final_output_path = os.path.join(outputFolder, file.split('.')[0] + ".embeddings.csv")
-            f = open(final_output_path, 'w')
+
+            #if the file already exists open it in append and read mode
+            #else create it in write mode
+            if os.path.exists(final_output_path):
+                f = open(final_output_path, 'a+')
+                f.seek(0)
+                dftmp = pd.read_csv(f, delimiter=',', low_memory=False)
+                dfCache = pd.concat([dfCache, dftmp], ignore_index=True)
+                print(f"Embeddings {final_output_path} File exists - Loading it into embeddings cache")
+            else:
+                f = open(final_output_path, 'w+')
+                print(f"Embeddings File created: {final_output_path}")
 
             #read the file into the first colum of df_si
             df = pd.read_csv(os.path.join(val_folder, file), delimiter=',')
+            df['Organism'] = df['Organism'].astype(str)
             #Add a Specie column that is equal to the first two words of the Organism column
-            df['Species'] = df['Organism'].apply(lambda x: x.split(' ')[0] + ' ' + x.split(' ')[1])
+            #If the Organism column is empty, put "Not defined" in the Specie column
+            df['Species'] = df['Organism'].apply(lambda x: x.split(' ')[0] + ' ' + x.split(' ')[1] if len(x.split(' ')) > 1 else "Not defined")
+
+            #df['Species'] = df['Organism'].apply(lambda x: x.split(' ')[0] + ' ' + x.split(' ')[1])
+
             #remove duplicates ffrom df
             df.drop_duplicates(subset=['Entry'], keep='first', inplace=True)
 
@@ -310,7 +330,7 @@ def computeEmbeddings(cfg, logger):
             for index, row in df.iterrows():
                 uniprot_id = row['Entry']
                 # replace tokens that are mis-interpreted when loading h5
-                uniprot_id = uniprot_id.replace("/", "_").replace(".", "_")
+                uniprot_id = uniprot_id.replace("/", "_")#.replace(".", "_")
 
                 # repl. all white-space chars and join seqs spanning multiple lines, drop gaps and cast to upper-case
                 seq = ''.join(row['Sequence'].split()).upper().replace("-", "")
@@ -347,9 +367,20 @@ def computeEmbeddings(cfg, logger):
                         df.loc[matching_row.index].to_csv(f, index=False, mode='a', header=f.tell() == 0)
 
 
-    #saved chachedEntries to the f file
-    if len(cachedEntries) > 0:
-        cachedEntries.to_csv(f, index=False, mode='a', header=f.tell() == 0)
+            #saved chachedEntries to the f file
+            if len(cachedEntries) > 0:
+                #Add to f all cachedEntries that are not in df
+                cachedEntries = cachedEntries[~cachedEntries['Entry'].isin(df['Entry'])]
+                cachedEntries.to_csv(f, index=False, mode='a', header=f.tell() == 0)
+
+    #Load f again into a df, remove duplicates and save it to final_output_path
+    logger.log_message(f"Final cleaning of the dataset ...")
+    f.seek(0)
+    df = pd.read_csv(f, delimiter=',', low_memory=False)
+    df.drop_duplicates(subset=['Entry'], keep='first', inplace=True)
+    df.to_csv(final_output_path, index=False)
+    f.close()
+    logger.log_message(f"Embeddings saved to {final_output_path}")
 
     return
 

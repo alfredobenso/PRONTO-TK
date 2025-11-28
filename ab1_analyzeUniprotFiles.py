@@ -20,6 +20,13 @@ def analyzeEmbeddingFiles(cfg, logger):
 
             if "Annotation" not in df.columns:
                 df.insert(0, "Annotation", "n/a")
+            else:
+                df["Annotation"].fillna("n/a", inplace=True)
+
+            if "Reviewed" not in df.columns:
+                df.insert(0, "Reviewed", "n/a")
+            else:
+                df["Reviewed"].fillna("n/a", inplace=True)
 
             # Count the number of labels (1/0) for each Species - Divide between Reviewed and unreviewed looking at the Reviewed column
             if "Label" in df.columns:
@@ -70,8 +77,8 @@ if __name__ == "__main__":
 
     cfg = {
         "UNIPROT": {
-            "go_folder": "Original Input//tmp",
-            "datasetname": "Terrabacteria"
+            "go_folder": "Original Input//RBPnew_no_homologus",
+            "datasetname": "RBP"
         }
     }
 

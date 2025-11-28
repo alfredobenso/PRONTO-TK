@@ -37,6 +37,7 @@ def applyFilters2DF(df, filters, logger, skipbalance = False):
             df = df[df['Annotation'].isin(filters["Label"]["annotation"])]
         elif filters["Label"]["reviewed"] != "":
             df = df[df['Reviewed'].isin(filters["Label"]["reviewed"])]
+
     else:
 
         if filters["Label_0"]["annotation"] != "" and filters["Label_0"]["reviewed"] != "" and filters["Label_1"]["annotation"] != "" and filters["Label_1"]["reviewed"] != "":
@@ -155,7 +156,9 @@ def filterDataSet(cfg, logger):
         #Free some space
         #Drop these columns: protId, Protein names, Gene Names, Organism, Length, Caution, Gene Ontology (molecular function)
         logger.log_message (f"Dropping unused columns...")
-        jj_all_data = jj_all_data.drop(columns=["Entry", "Sequence", "Protein names", "Gene Names", "Organism", "Length", "Caution", "Gene Ontology (molecular function)"])
+        toDrop = ["Entry", "Sequence", "Protein names", "Gene Names", "Organism", "Length", "Caution", "Gene Ontology (molecular function)"]
+        #drop those columns if they exists
+        jj_all_data = jj_all_data.drop(columns=[col for col in toDrop if col in jj_all_data.columns])
 
         #jj_all_data.set_index('Entry Name', inplace=True)
 
@@ -189,7 +192,7 @@ def filterDataSet(cfg, logger):
                 # ******* TRAIN/TEST FILTERS
                 jj_all_data_TT = applyFilters2DF(jj_all_data, labelConfig(cfg, "TRAINTEST"), logger) #TT Test Train
                 if len(entries_to_keep_in_TT) > 0:
-                    #remove from jj_all_data_TT the rows that are in entries_to_keep_in_FT and keep everythong else
+                    #remove from jj_all_data_TT the rows that are in entries_to_keep_in_FT and keep everything else
                     jj_all_data_TT = jj_all_data_TT[~jj_all_data_TT["Entry Name"].isin(entries_to_keep_in_FT)]
                     numToRemove = len(entries_to_keep_in_FT)
                     indexToRemove = jj_all_data_TT[jj_all_data_TT["Label"] == 0].sample(n=numToRemove, random_state=42).index
@@ -265,9 +268,30 @@ def filterDataSet(cfg, logger):
         logger.log_message("No dataset creation requested...", progress=1)
     return
 
-def main(cfg, logger):
-    filterDataSet(cfg, logger)
-
 if __name__ == "__main__":
-    main()
+
+    import logging
+    import sys
+
+    class CustomLogger(logging.Logger):
+        def __init__(self, name, level=logging.NOTSET):
+            super().__init__(name, level)
+
+        def log_message(self, message, *args, **kwargs):
+            print(message)
+
+    cfg = {
+        "UNIPROT": {
+            "go_folder": "Original Input//RBPnew",
+            "datasetname": "RBP"
+        }
+    }
+
+    logger = CustomLogger('test')
+    logger.setLevel(logging.DEBUG)
+    ch = logging.StreamHandler(sys.stdout)
+    ch.setLevel(logging.DEBUG)
+    logger.addHandler(ch)
+
+    filterDataSet(cfg, logger)
 

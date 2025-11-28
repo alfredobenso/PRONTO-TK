@@ -67,6 +67,8 @@ def DL_validate(cfg, inputModel, model_name, inputData, outputFile, logger, vali
 
     if "Entry Name" in jj_all_data.columns:
         df['Entry Name'] = jj_all_data['Entry Name']
+    elif "Entry" in jj_all_data.columns:
+        df['Entry Name'] = jj_all_data['Entry']
 
     if "Annotation" in jj_all_data.columns:
         df['Annotation'] = jj_all_data['Annotation']

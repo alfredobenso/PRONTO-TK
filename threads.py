@@ -70,7 +70,7 @@ def thread_jj1(cfg, window, callback=None, semaphore=None):
     #Add here other embeddings computation functions
     window.logger_handler.log_message("Analyzing Embedding files...")
     ab1_analyzeUniprotFiles.analyzeEmbeddingFiles(cfg, window.logger_handler)
-    window.logger_handler.log_message("Mergin Embedding files...")
+    window.logger_handler.log_message("Merging Embedding files...")
     ab2_mergeEmbeddingFiles.mergeEmbeddings(cfg, window.logger_handler)
     window.logger_handler.log_message("\nEmbeddings computation done\n",1)
     window.logger_handler.log_message(f"NOTICE: if you need to save space, you can now delete the 'downloads' and 'embeddings' folders in '{cfg['UNIPROT']['go_folder']}'",1)

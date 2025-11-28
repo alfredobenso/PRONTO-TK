@@ -534,6 +534,10 @@ class MainWindow:
         if "VALIDATION" not in self.cfg:
             self.cfg["VALIDATION"] = {"trainflag": "yes"}
 
+        #if the folder "inferences" does not exists, create it
+        if not os.path.exists(os.path.join("experiments", self.cfg["GENERAL"]["folder"], "inferences")):
+            os.makedirs(os.path.join("experiments", self.cfg["GENERAL"]["folder"], "inferences"))
+
         #If it exists at least one file whose name starts with inference in the inferences folder...
         if len([f for f in os.listdir(os.path.join("experiments", self.cfg["GENERAL"]["folder"], "inferences")) if f.startswith("inference")]) > 0:
             answer = messagebox.askyesno("Warning", f"Some of the output inferences seem to be already present. Do you want to recompute them?", icon='warning')
