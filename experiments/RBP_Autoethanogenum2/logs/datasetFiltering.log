@@ -1,0 +1,36 @@
+Starting Dataset filtering...
+Loading original datasets into dataframes...
+Checking labels to 0/1/-1 (-1 means NO LABEL)...
+Dropping unused columns...
+Total number of rows in the dataset: 126506
+********************************************************************************
+TT Dataset loaded...
+Balancing the labels....
+FV Dataset created...
+********************************************************************************
+Dataset Summary:
+********************************************************************************
+Training Test (TT):
+- Total number of Label 1 in the Test/Train dataset: 15949
+- Total number of Label 0 in the Test/Train dataset: 15902
+		Train: 1: 11164 - 0: 11131
+		Test: 1: 3190 - 0: 3180
+		Val: 1: 1595 - 0: 1591
+********************************************************************************
+Total number of rows in the Validation dataset: 10357
+Total number of Label 1 in the Validation dataset: 0
+Total number of Label 0 in the Validation dataset: 0
+********************************************************************************
+Dataset done
+******* Validation *******
+Inference #0...
+Model: M_TT_RBP-AEthanogenum2_epochs_350_lr_0.0001000_model_RBP_TSTL_small_batch_250_exclude_-1.pl
+Output: inference_TT_RBP-AEthanogenum2_epochs_350_lr_0.0001000_model_RBP_TSTL_small_batch_250_exclude_-1.csv
+Inference #1...
+Model: M_FT_origin_RBP-AEthanogenum2-350-0.0001000-RBP_TSTL_small-250_epochs_18_lr_0.0000050_model_RBP_TSTL_small_batch_120_exclude_-1.pl
+Output: inference_FT_origin_RBP-AEthanogenum2-350-0.0001000-RBP_TSTL_small-250_epochs_18_lr_0.0000050_model_RBP_TSTL_small_batch_120_exclude_-1.csv
+inference_TT_RBP-AEthanogenum2_epochs_350_lr_0.0001000_model_RBP_TSTL_small_batch_250_exclude_-1.csv
+Total inferred proteins: 10357
+Rows with Label '1' > 0.75: 315 (3.04%)
+Rows with Label '1' between 0.25 and 0.75: 122 (1.18%)
+Rows with Label '1' < 0.25: 9920 (95.78%)
