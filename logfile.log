@@ -1,0 +1,17 @@
+******* Validation *******
+Inference #0 already present, skipping...
+Inference #1...
+Model: M_FT_origin_RBP-AEthanogenum2-350-0.0001000-RBP_TSTL_small-250_epochs_18_lr_0.0000050_model_RBP_TSTL_small_batch_120_exclude_-1.pl
+Output: inference_FT_origin_RBP-AEthanogenum2-350-0.0001000-RBP_TSTL_small-250_epochs_18_lr_0.0000050_model_RBP_TSTL_small_batch_120_exclude_-1.csv
+inference_TT_RBP-AEthanogenum2_epochs_350_lr_0.0001000_model_RBP_TSTL_small_batch_250_exclude_-1.csv
+Total inferred proteins: 10357
+Rows with Label '1' > 0.75: 315 (3.04%)
+Rows with Label '1' between 0.25 and 0.75: 122 (1.18%)
+Rows with Label '1' < 0.25: 9920 (95.78%)
+inference_FT_origin_RBP-AEthanogenum2-350-0.0001000-RBP_TSTL_small-250_epochs_18_lr_0.0000050_model_RBP_TSTL_small_batch_120_exclude_-1.csv
+Total inferred proteins: 10357
+Rows with Label '1' > 0.75: 678 (6.55%)
+Rows with Label '1' between 0.25 and 0.75: 214 (2.07%)
+Rows with Label '1' < 0.25: 9465 (91.39%)
+
+Inference completed...

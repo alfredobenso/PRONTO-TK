@@ -1,2 +1,4 @@
 *.embeddings.dataset.csv
 logfile.log
+tmp/
+tmp2/

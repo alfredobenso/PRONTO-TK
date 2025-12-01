@@ -5,7 +5,7 @@
    First, you need to clone the repository from GitHub. Open your terminal and navigate to the directory where you want to clone the repository. Then, run the following command:
 
    ```bash
-   git clone -b naturcomm https://github.com/alfredobenso/PRONTO-TK
+   git clone -b naturecomm https://github.com/alfredobenso/PRONTO-TK
    
 2. **Navigate to the Project Directory**
 
@@ -30,7 +30,7 @@
 
 5. **Using the Application**
     The first operation is to select a configuration file. Configuration files are in the experiments/_configurations folder.
-	Select: RBP AutoEthanogenum2
+	Select: "CFG_Terrabacteria RBP AutoEthanogenum2.ini"
 
 ## Configuration Manual
 see documentation [here](docs/manual.md)
@@ -38,6 +38,6 @@ see documentation [here](docs/manual.md)
 ## Run a test experiment
 > **WARNING**: sometimes you need to RESIZE or MOVE the app windows to being able to interact with them (like clicking on a Phase to execute it or clicking a button). This is a known issue, and we are working on it.
 
-If you run the embeddings computation, it might require a LONG time since it has to regenerate an embeddings file of over 2G. 
+The Uniprot Dataset is already downloaded but the embeddings computation might require a LONG time since it has to regenerate an embeddings file of over 2G. 
 
 To execute the whole experiment as reported in the paper, run sequentially all the steps in the pipeline.
