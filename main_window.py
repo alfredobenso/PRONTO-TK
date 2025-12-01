@@ -169,29 +169,14 @@ class MainWindow:
     '''
     def checkIO(self):
 
-        print("\n" + "="*80)
-        print("FILE EXISTENCE CHECK - checkIO() Method")
-        print("="*80)
-
         self.labelTitle.configure(text=f"{self.cfg['GENERAL']['name']}\n{self.cfg['GENERAL']['type'].capitalize()} Experiment", font=self.my_font)
 
         #If there are files in the cfg["UNIPROT"]["go_folder"], the textbox will be green
         if "UNIPROT" in self.cfg or "EMBEDDINGS" in self.cfg:
-            if "UNIPROT" in self.cfg:
-                uniprot_file = os.path.join(self.cfg["UNIPROT"]["go_folder"], "downloads", self.cfg["UNIPROT"]["datasetname"] + ".dataset.csv")
-                file_exists = os.path.exists(uniprot_file)
-                print(f"\n[UNIPROT DOWNLOAD]")
-                print(f"  Looking for: {uniprot_file}")
-                print(f"  Status: {'✓ FOUND' if file_exists else '✗ NOT FOUND'}")
-
-                if file_exists:
-                    #textbox background green
-                    self.textboxDATA_UP.configure(fg_color=colorGREEN)
-                    self.buttonEMB.configure(state=ctk.NORMAL)
-                else:
-                    #textbox background red
-                    self.textboxDATA_UP.configure(fg_color=colorRED)
-                    self.buttonEMB.configure(state=ctk.DISABLED)
+            if "UNIPROT" in self.cfg and os.path.exists(os.path.join(self.cfg["UNIPROT"]["go_folder"], "downloads", self.cfg["UNIPROT"]["datasetname"] + ".dataset.csv")):
+                #textbox background green
+                self.textboxDATA_UP.configure(fg_color=colorGREEN)
+                self.buttonEMB.configure(state=ctk.NORMAL)
             else:
                 #textbox background red
                 self.textboxDATA_UP.configure(fg_color=colorRED)
@@ -199,12 +184,8 @@ class MainWindow:
 
         allOk = True
         count = 0
-        print(f"\n[ORIGINAL DATASETS / EMBEDDINGS]")
         for dsFile in self.cfg["GENERAL"]["originaldataset"]:
-            file_exists = os.path.exists(dsFile)
-            print(f"  Looking for: {dsFile}")
-            print(f"  Status: {'✓ FOUND' if file_exists else '✗ NOT FOUND'}")
-            if not file_exists:
+            if not os.path.exists(dsFile):
                 allOk = False
                 count += 1
 
@@ -234,13 +215,8 @@ class MainWindow:
         if not os.path.exists(datasetFolder):
             os.makedirs(datasetFolder)
 
-        print(f"\n[TRAINING/TESTING/VALIDATION DATASETS]")
         if "TRAINTEST" in self.cfg:
-            tt_file = os.path.join(datasetFolder, "dataset_TT.csv")
-            file_exists = os.path.exists(tt_file)
-            print(f"  Looking for: {tt_file}")
-            print(f"  Status: {'✓ FOUND' if file_exists else '✗ NOT FOUND'}")
-            if not file_exists:
+            if not os.path.exists(os.path.join(datasetFolder, "dataset_TT.csv")):
                 self.textboxTT_DATA.configure(fg_color=colorRED)
                 self.buttonTT.configure(state=ctk.DISABLED)
                 allOk = False
@@ -249,11 +225,7 @@ class MainWindow:
                 self.buttonTT.configure(state=ctk.NORMAL)
 
         if "FINETUNING" in self.cfg:
-            ft_file = os.path.join(datasetFolder, "dataset_FT.csv")
-            file_exists = os.path.exists(ft_file)
-            print(f"  Looking for: {ft_file}")
-            print(f"  Status: {'✓ FOUND' if file_exists else '✗ NOT FOUND'}")
-            if not file_exists:
+            if not os.path.exists(os.path.join(datasetFolder, "dataset_FT.csv")):
                 self.textboxFT_DATA.configure(fg_color=colorRED)
                 self.buttonFT.configure(state=ctk.DISABLED)
                 allOk = False
@@ -262,11 +234,7 @@ class MainWindow:
                 self.buttonFT.configure(state=ctk.NORMAL)
 
         if "VALIDATION" in self.cfg:
-            fv_file = os.path.join(datasetFolder, "dataset_FV.csv")
-            file_exists = os.path.exists(fv_file)
-            print(f"  Looking for: {fv_file}")
-            print(f"  Status: {'✓ FOUND' if file_exists else '✗ NOT FOUND'}")
-            if not file_exists:
+            if not os.path.exists(os.path.join(datasetFolder, "dataset_FV.csv")):
                 self.textboxFV_DATA.configure(fg_color=colorRED)
                 self.buttonFV.configure(state=ctk.DISABLED)
                 allOk = False
@@ -285,31 +253,20 @@ class MainWindow:
         model_path = os.path.join("experiments", self.cfg["GENERAL"]["folder"], "1.DL_Training", "Model")
 
         if "TRAINTEST" in self.cfg:
-            print(f"\n[TRAINED MODELS - TT]")
             if self.cfg["GENERAL"]["type"] == "single":
                 totalModels = len(self.cfg["TRAINTEST"]["epoch"]) * len(self.cfg["TRAINTEST"]["learning_rate"]) * len(self.cfg["TRAINTEST"]["batch_size"])
                 availableModels = 0
                 for epochs, lr, batch in product(self.cfg["TRAINTEST"]["epoch"], self.cfg["TRAINTEST"]["learning_rate"], self.cfg["TRAINTEST"]["batch_size"]):
                     model_file = f'M_TT_{self.cfg["GENERAL"]["acronym"]}_epochs_{epochs}_lr_{lr:.7f}_model_{self.cfg["TRAINTEST"]["model_name"]}_batch_{batch}_exclude_-1.pl'
-                    full_path = os.path.join(model_path, model_file)
-                    file_exists = os.path.exists(full_path)
-                    print(f"  Looking for: {full_path}")
-                    print(f"  Status: {'✓ FOUND' if file_exists else '✗ NOT FOUND'}")
-                    if file_exists:
+                    if os.path.exists(os.path.join(model_path, model_file)):
                         availableModels += 1
             elif self.cfg["GENERAL"]["type"] == "leaveoneout":
                 totalModels = len(self.cfg["TRAINTEST"]["epoch"]) * len(self.cfg["TRAINTEST"]["learning_rate"]) * len(self.cfg["TRAINTEST"]["batch_size"]) * len(self.cfg["TRAINTEST"]["leaveoneoutspecies"])
                 availableModels = 0
                 for epochs, lr, batch, lOneOut in product(self.cfg["TRAINTEST"]["epoch"], self.cfg["TRAINTEST"]["learning_rate"], self.cfg["TRAINTEST"]["batch_size"], range(len(self.cfg["TRAINTEST"]["leaveoneoutspecies"]))):
                     model_file = f'M_TT_{self.cfg["GENERAL"]["acronym"]}_epochs_{epochs}_lr_{lr:.7f}_model_{self.cfg["TRAINTEST"]["model_name"]}_batch_{batch}_exclude_{lOneOut}.pl'
-                    full_path = os.path.join(model_path, model_file)
-                    file_exists = os.path.exists(full_path)
-                    print(f"  Looking for: {full_path}")
-                    print(f"  Status: {'✓ FOUND' if file_exists else '✗ NOT FOUND'}")
-                    if file_exists:
+                    if os.path.exists(os.path.join(model_path, model_file)):
                         availableModels += 1
-
-            print(f"  Summary: {availableModels}/{totalModels} models found")
 
             if "TRAINTEST" in self.cfg:
                 if availableModels == totalModels:
@@ -336,7 +293,6 @@ class MainWindow:
 
         if "FINETUNING" in self.cfg and "TRAINTEST" in self.cfg:
             #Checking output FT models
-            print(f"\n[FINE-TUNED MODELS - FT]")
             model_names = []
             model_strings = []
             if self.cfg["GENERAL"]["type"] == "single":
@@ -353,11 +309,7 @@ class MainWindow:
                                                         self.cfg["FINETUNING"]["learning_rate"],
                                                         self.cfg["FINETUNING"]["batch_size"], range(len(model_names))):
                     model_file = f'M_FT_origin_{model_strings[MODEL]}_epochs_{EPOCHS}_lr_{LR:.7f}_model_{self.cfg["TRAINTEST"]["model_name"]}_batch_{BATCH}_exclude_-1.pl'
-                    full_path = os.path.join(model_path, model_file)
-                    file_exists = os.path.exists(full_path)
-                    print(f"  Looking for: {full_path}")
-                    print(f"  Status: {'✓ FOUND' if file_exists else '✗ NOT FOUND'}")
-                    if file_exists:
+                    if os.path.exists(os.path.join(model_path, model_file)):
                         availableModels += 1
 
             elif self.cfg["GENERAL"]["type"] == "leaveoneout":
@@ -375,14 +327,8 @@ class MainWindow:
                                                         self.cfg["FINETUNING"]["batch_size"], range(len(model_names))):
                     for idx, speciesGroup in enumerate(self.cfg["TRAINTEST"]["leaveoneoutspecies"]):
                         model_file = f'M_FT_origin_{model_strings[MODEL]}_epochs_{EPOCHS}_lr_{LR:.7f}_model_{self.cfg["TRAINTEST"]["model_name"]}_batch_{BATCH}_exclude_{idx}.pl'
-                        full_path = os.path.join(model_path, model_file)
-                        file_exists = os.path.exists(full_path)
-                        print(f"  Looking for: {full_path}")
-                        print(f"  Status: {'✓ FOUND' if file_exists else '✗ NOT FOUND'}")
-                        if file_exists:
+                        if os.path.exists(os.path.join(model_path, model_file)):
                             availableModels += 1
-
-            print(f"  Summary: {availableModels}/{totalModels} fine-tuned models found")
 
             if availableModels == totalModels:
                 #textbox background red
@@ -399,10 +345,6 @@ class MainWindow:
         else:
             color = self.textboxTT_MOD.cget("fg_color")
             self.textboxFT_MOD.configure(fg_color=color)
-
-        print("\n" + "="*80)
-        print("FILE CHECK COMPLETE")
-        print("="*80 + "\n")
 
     '''
     This method reads the configuration file and returns a dictionary with 
