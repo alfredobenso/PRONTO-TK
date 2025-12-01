@@ -5,7 +5,7 @@
    First, you need to clone the repository from GitHub. Open your terminal and navigate to the directory where you want to clone the repository. Then, run the following command:
 
    ```bash
-   git clone -b naturecomm https://github.com/alfredobenso/PRONTO-TK
+   git lfs clone -b naturecomm https://github.com/alfredobenso/PRONTO-TK
    
 2. **Navigate to the Project Directory**
 
@@ -13,6 +13,7 @@
 
    ```bash
    cd your-repository-name
+   git lfs pull
    
 3. **Install the Dependencies**
 
