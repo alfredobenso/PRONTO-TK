@@ -2,3 +2,11 @@
 logfile.log
 tmp/
 tmp2/
+.DS_Store
+.vscode/
+.idea/
+__pycache__/
+*.pyc
+.env
+.env.*
+.ipynb_checkpoints/
