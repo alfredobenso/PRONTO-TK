@@ -13,7 +13,6 @@
 
    ```bash
    cd your-repository-name
-   git lfs pull
    
 3. **Install the Dependencies**
 
@@ -34,11 +33,25 @@
 	Select: "CFG_Terrabacteria RBP AutoEthanogenum2.ini"
 
 ## Configuration Manual
-see documentation [here](docs/manual.md)
+see documentation (docs/manual.md)
 
-## Run a test experiment
+## Run the experiment
 > **WARNING**: sometimes you need to RESIZE or MOVE the app windows to being able to interact with them (like clicking on a Phase to execute it or clicking a button). This is a known issue, and we are working on it.
 
-The Uniprot Dataset is already downloaded but the embeddings computation might require a LONG time since it has to regenerate an embeddings file of over 2G. 
+The Uniprot Datasets are already downloaded but the embeddings computation might require a LONG time since it has to regenerate an embeddings file of over 2G.
+It is not necessary to run the embeddings computation since we already included the final datasets.
 
 To execute the whole experiment as reported in the paper, run sequentially all the steps in the pipeline.
+
+##Other content
+**'scripts'** **folder**:
+
+* tr.tl.rank.bin,r studies the agreement in gene rankings by differential transcription and differential translation analyses.
+
+
+* consistency.dtl.dtr.r carries out cross-comparison of top 5% gene sets across the three metrics used to evaluate translational regulation (TL-STATUS, TL-PROFILE, and POLY-FRACTIONS)
+
+**'results/DTL'** **folder**:
+
+* results images referenced in the paper
+
