@@ -43,7 +43,7 @@ It is not necessary to run the embeddings computation since we already included 
 
 To execute the whole experiment as reported in the paper, run sequentially all the steps in the pipeline.
 
-##Other content
+## Other content
 **'scripts'** **folder**:
 
 * tr.tl.rank.bin,r studies the agreement in gene rankings by differential transcription and differential translation analyses.
